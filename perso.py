@@ -5,6 +5,7 @@ from ee_ipl_uv_perso.parameters import *
 import ee
 
 
+
 def add_ndvi_bands(image):
     return image.addBands(image.normalizedDifference([NIR, RED]))
 
@@ -204,77 +205,114 @@ def PredictPercentile(img, region_of_interest, num_images=3, threshold_cc=5):
     img_percentile = imgColl.reduce(reducer=ee.Reducer.percentile(percentiles=[50]))
     return img_percentile
 
+def normalizedImage(image):
+    # Normalization image according to article
+    coef_standard = 10000
+    return image.divide(coef_standard)
+
+
+####################################
+# Compute Decision Tree filter 1   #
+####################################
+def getMaskTree1(image):
+    image_normalized = normalizedImage(image)
+
+    # Criteria 1 : Cirrus
+    expr1 = image_normalized.expression(
+                '( (b("B3") < 0.325) && (b("B8A") < 0.166) && (b("B10") > 0.011)) ? 1 : 0' 
+                )
+    # Criteria 2 : Cirrus
+    expr2 = image_normalized.expression(
+                '( (b("B3") > 0.325) && (b("B11") < 0.267) && (b("B4") < 0.674)) ? 1 : 0' 
+                )
+    # Criteri 3 : Clouds
+    expr3 = image_normalized.expression(
+                '( (b("B3") > 0.325) && (b("B11") > 0.267) && (b("B7") < 1.544)) ? 1 : 0' 
+                )
+    # full criteria = Clouds + Cirrus
+    return expr1.Or(expr2.Or(expr3))
 
 
 
-# Region of interest
-ROI = image.get("system:footprint").getInfo().coordinates;
-ROI = ee.Geometry.Polygon(ROI);
+####################################
+# Compute Decision Tree filter 2   #
+####################################
+def getMaskTree2(image):
+    image_normalized = normalizedImage(image)
 
-# Map Center
-lineRing = image.getInfo()['properties']['system:footprint'];
-center = ee.Array(lineRing.coordinates);
-center = center.reduce(ee.Reducer.mean(), [0]).getInfo()['0'];
-zoom = 8;
-
-# Normalization image according to article
-coef_standard = 10000;
-coef_32k = 32758; # 2**15;
-image_standard = image.divide(coef_standard);
-image_32k = image.divide(coef_32k);
-
-/**********************************/
-/* Compute Decision Tree filter 1 */
-/**********************************/
-function getMaskTree1(image_normalized){
-  # Criteria 1 : Cirrus
-  expr1 = image_normalized.expression(
-    '( (b("B3") < 0.325) & (b("B8A") < 0.166) & (b("B10") > 0.011)) ? 1 : 0' 
-  );
-  # Criteria 2 : Cirrus
-  expr2 = image_normalized.expression(
-    '( (b("B3") > 0.325) & (b("B11") < 0.267) & (b("B4") < 0.674)) ? 1 : 0' 
-  );
-  # Criteri 3 : Clouds
-  expr3 = image_normalized.expression(
-    '( (b("B3") > 0.325) & (b("B11") > 0.267) & (b("B7") < 1.544)) ? 1 : 0' 
-  );
-  # full criteria = Clouds + Cirrus
-  return expr1.or(expr2.or(expr3));
-}
+    # Criteria 1 : Cirrus
+    expr1 = image_normalized.expression(
+                '( (b("B8A") > 0.156) && (b("B3") < 0.333) && (b("B10")/b("B2") > 0.065)) ? 1 : 0' 
+                )
+    # Criteria 2 : Cloud
+    expr2 = image_normalized.expression(
+                '( (b("B8A") > 0.156) && (b("B3") > 0.333) && (b("B6")/b("B11") < 4.292)) ? 1 : 0' 
+            )
+    # full criteria = Clouds + Cirrus
+    return expr1.Or(expr2)
 
 
-/**********************************/
-/* Compute Decision Tree filter 2 */
-/**********************************/
-function getMaskTree2(image_normalized){
-  # Criteria 1 : Cirrus
-  expr1 = image_normalized.expression(
-    '( (b("B8A") > 0.156) & (b("B3") < 0.333) & (b("B10")/b("B2") > 0.065)) ? 1 : 0' 
-  );
-  # Criteria 2 : Cloud
-  expr2 = image_normalized.expression(
-    '( (b("B8A") > 0.156) & (b("B3") > 0.333) & (b("B6")/b("B11") < 4.292)) ? 1 : 0' 
-  );
-  # full criteria = Clouds + Cirrus
-  return expr1.or(expr2);
-}
+####################################
+# Compute Decision Tree filter 2   #
+####################################
+def getMaskTree3(image):
+    image_normalized = normalizedImage(image)
+
+    # Criteria 1 : Cirrus
+    expr1 = image_normalized.expression(
+                '( (b("B8A") < 0.181) && (b("B8A") > 0.051) && (b("B12") < 0.097) && (b("B10") > 0.011)) ? 1 : 0' 
+                )
+    # Criteria 2 : Cloud
+    expr2 = image_normalized.expression(
+                '( (b("B8A") > 0.181) && (b("B1") < 0.331) && (b("B10") < 0.012) && (b("B2") > 0.271) ) ? 1 : 0' 
+            )
+    
+    # Criteria 3 : Cirrus
+    expr3 = image_normalized.expression(
+                '( (b("B8A") > 0.181) && (b("B1") < 0.331) && (b("B10") > 0.012) ) ? 1 : 0' 
+            )
+
+    # Criteria 4 : Cirrus
+    expr4 = image_normalized.expression(
+                '( (b("B8A") > 0.181) && (b("B1") > 0.331) && (b("B11") < 0.239) && (b("B2") < 0.711) ) ? 1 : 0' 
+            )
+
+    # Criteria 5 : Cloud
+    expr5 = image_normalized.expression(
+                '( (b("B8A") > 0.181) && (b("B1") > 0.331) && (b("B11") > 0.239) && (b("B5") < 1.393) ) ? 1 : 0' 
+            )
+
+    # full criteria = Clouds + Cirrus
+    return expr1.Or(expr2.Or(expr3.Or(expr4.Or(expr5))))
 
 
-/*********************************/
-/* GEE Cloud Mask                */
-/*********************************/
+####################################
+# GEE Cloud Mask                   #
+####################################
 def getMaskGEE(image):
-    qa = image.select('QA60');
+    qa = image.select('QA60')
 
-    # Bits 10 and 11 are clouds and cirrus, respectively.
-    cloudBitMask = 1 << 10;
-    cirrusBitMask = 1 << 11;
+    cloudBitMask = 1 << 10              # Bit 10 is cloud
+    cirrusBitMask = 1 << 11             # Bit 11 is cirrus
 
     # Both flags should be set to zero, indicating clear conditions.
-    mask = qa.bitwiseAnd(cloudBitMask).eq(0)
-        .and(qa.bitwiseAnd(cirrusBitMask).eq(0));
+    mask = qa.bitwiseAnd(cloudBitMask).eq(0).And(qa.bitwiseAnd(cirrusBitMask).eq(0))
 
-    return mask.not()
+    return mask.Not()
 
 
+
+def exportToDrive(image):
+    params = {
+        'fileNamePrefix':'imageRGB',
+        'folder':'datasetTestAberdeen',
+        'image':image, # cast bands
+        'description': 'description imageRGB',
+        'scale': 30,
+        'maxPixels':1e13
+    }
+    print("Début exportation ...")
+    task = ee.batch.Export.image.toDrive(**params)
+    # Import module for batch !
+    # batch.Task.start(task)
+    print("Exportation terminée :-)")
