@@ -13,8 +13,12 @@ from ee_ipl_uv_perso import converters
 from ee_ipl_uv_perso import time_series_operations
 from ee_ipl_uv_perso import normalization
 from ee_ipl_uv_perso import clustering
-from ee_ipl_uv_perso import parameters
-from ee_ipl_uv_perso import perso
+from ee_ipl_uv_perso.perso_parameters import SENTINEL2_BANDNAMES, \
+                                             PARAMS_CLOUDCLUSTERSCORE_DEFAULT, \
+                                             PARAMS_SELECTBACKGROUND_DEFAULT, \
+                                             CC_IMAGE_TOP
+from ee_ipl_uv_perso.perso import PredictPercentile, \
+                                  PreviousImagesWithCCSentinel
 import logging
 
 
@@ -83,7 +87,7 @@ class ModelCloudMasking:
 
         # Decrease beta linearly as the amount of cc_image increases
         if beta is None:
-            self.beta = .5 - .5 * self.cc_image / parameters.CC_IMAGE_TOP
+            self.beta = .5 - .5 * self.cc_image / CC_IMAGE_TOP
             self.beta = self.beta if self.beta > 0 else 0
         else:
             self.beta = beta
@@ -126,7 +130,7 @@ class ModelCloudMasking:
 
         self.estimation_set = estimation_set
         self.prediction_set = prediction_set
-        if (self.beta > 0) and (self.cc_image < parameters.CC_IMAGE_TOP):
+        if (self.beta > 0) and (self.cc_image < CC_IMAGE_TOP):
             self.datos = estimation_set.merge(prediction_set.select(bmp,
                                                                     bme))
         else:
@@ -417,7 +421,7 @@ def ComputeCloudCoverGeom(img, region_of_interest):
 
 
 # _REFLECTANCE_BANDS_LANDSAT8 = ["B%d" % i for i in range(1, 12)]
-_REFLECTANCE_BANDS_SENTINEL2 = parameters.SENTINEL2_BANDNAMES
+_REFLECTANCE_BANDS_SENTINEL2 = SENTINEL2_BANDNAMES
 
 def ImagesWithCC(sentinel_img, start_date, end_date, region_of_interest=None, include_img=False):
     sentinel_info = sentinel_img.getInfo()
@@ -471,38 +475,38 @@ def ImagesWithCC(sentinel_img, start_date, end_date, region_of_interest=None, in
     return imgColl.map(lambda x: ComputeCloudCoverGeom(x, region_of_interest))
 
 
-def PreviousImagesWithCC(landsat_img, region_of_interest=None,
+def PreviousImagesWithCC(sentinel_img, region_of_interest=None,
                          REVISIT_DAY_PERIOD=15, NUMBER_IMAGES=30,
                          include_img=False):
     """
     Return the NUMBER_IMAGES previous images with cloud cover
 
-    :param landsat_img:
+    :param sentinel_img:
     :param region_of_interest:
     :param REVISIT_DAY_PERIOD:
     :param NUMBER_IMAGES:
-    :param include_img: if the current image (landsat_img) should be included in the series
+    :param include_img: if the current image (sentinel_img) should be included in the series
     :return:
     """
     # Get collection id
 
-    dateDebut = ee.Date(ee.Number(landsat_img.get("system:time_start")).subtract(
+    dateDebut = ee.Date(ee.Number(sentinel_img.get("system:time_start")).subtract(
                             REVISIT_DAY_PERIOD * NUMBER_IMAGES * 24 * 60 * 60 * 1000))
-    dateFin = ee.Date(landsat_img.get("system:time_start"))
+    dateFin = ee.Date(sentinel_img.get("system:time_start"))
 
-    return ImagesWithCC(landsat_img,
+    return ImagesWithCC(sentinel_img,
                         dateDebut,
                         dateFin,
                         region_of_interest=region_of_interest,
                         include_img=include_img)
 
 
-def NextImagesWithCC(landsat_img, region_of_interest=None,
+def NextImagesWithCC(sentinel_img, region_of_interest=None,
                      REVISIT_DAY_PERIOD=15, NUMBER_IMAGES=30,
                      include_img=False):
-    return ImagesWithCC(landsat_img,
-                        ee.Date(landsat_img.get("system:time_start")),
-                        ee.Date(ee.Number(landsat_img.get("system:time_start")).add(
+    return ImagesWithCC(sentinel_img,
+                        ee.Date(sentinel_img.get("system:time_start")),
+                        ee.Date(ee.Number(sentinel_img.get("system:time_start")).add(
                             REVISIT_DAY_PERIOD * NUMBER_IMAGES * 24 * 60 * 60 * 1000)),
                         region_of_interest=region_of_interest,
                         include_img=include_img)
@@ -510,80 +514,97 @@ def NextImagesWithCC(landsat_img, region_of_interest=None,
 
 # LANDSAT8_BANDNAMES = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'BQA']
 
-def SelectImagesTraining(landsat_img, band_names=parameters.SENTINEL2_BANDNAMES,
-                         region_of_interest=None, num_images=3, REVISIT_DAY_PERIOD=15,
-                         threshold_cc=10):
-    """
-    Given a landsat image, it returns the num_images previous images together with the current image with CC lower than
-     THRESHOLD_CC. The returned image contains previous images in bands. It will have num_bands*(num_images+1) bands
 
-    :param landsat_img: landsat image
-    :type landsat_img: ee.Image
-    :param band_names: band names to add to the current image
-    :param region_of_interest:
-    :type region_of_interest: ee.Geometry
-    :param num_images:
-    :param REVISIT_DAY_PERIOD:
-    :param threshold_cc:
-    :return:
-    :rtype ee.Image
+def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
+                         number_of_images, number_preselect,
+                         threshold_cc):
     """
+    Given a landsat image, it returns the number_of_images previous images together with the current image with CC lower than
+     THRESHOLD_CC. The returned image contains previous images in bands. It will have num_bands*(number_of_images+1) bands
 
-    imgColl = perso.PreviousImagesWithCCSentinel(landsat_img,
-                                                region_of_interest,
-                                                threshold_cc= 10)
+        :param method_number: Number of the method used
+        :param sentinel_img: image to analyzed
+        :param region_of_interest: 
+        :type region_of_interest: ee.Geometry
+        :param number_of_images: 
+        :param number_preselect: 
+        :param threshold_cc:
+        :return:
+            :rtype ee.Image
+    """                    
+
+    band_names = SENTINEL2_BANDNAMES
+
+    imgColl = PreviousImagesWithCCSentinel(method_number,
+                                                sentinel_img,
+                                                number_of_images,
+                                                threshold_cc,
+                                                number_preselect,
+                                                region_of_interest)
     size_img_coll = ee.Number(imgColl.size())
 
-    offset = ee.Number(0).max(size_img_coll.subtract(num_images))
-    imagenes_training = imgColl.toList(count=num_images, offset=offset)
+    offset = ee.Number(0).max(size_img_coll.subtract(number_of_images))
+    imagenes_training = imgColl.toList(count=number_of_images, offset=offset)
 
     # join images into a single image
     # band_names = landsat_img.bandNames()
-    for lag in range(1, num_images + 1):
-        image_add = ee.Image(imagenes_training.get(num_images - lag))
+    for lag in range(1, number_of_images + 1):
+        image_add = ee.Image(imagenes_training.get(number_of_images - lag))
         new_band_names = time_series_operations.GenerateBandNames(band_names, "_lag_" + str(lag))
         
         image_add = image_add.select(band_names, new_band_names)
-        landsat_img = landsat_img.addBands(image_add)
-        landsat_img = landsat_img.set("system:time_start_lag_" + str(lag), image_add.get("system:time_start"))
-        landsat_img = landsat_img.set("CC_lag_" + str(lag), image_add.get("CC"))
+        sentinel_img = sentinel_img.addBands(image_add)
+        sentinel_img = sentinel_img.set("system:time_start_lag_" + str(lag), image_add.get("system:time_start"))
+        sentinel_img = sentinel_img.set("CC_lag_" + str(lag), image_add.get("CC"))
         
-    return landsat_img
+    return sentinel_img
 
-
+"""
 def PredictPercentile(img, region_of_interest, num_images=3, threshold_cc=5):
     imgColl = perso.PreviousImagesWithCCSentinel(img, region_of_interest)
     # imgColl = imgColl.filter(ee.Filter.lt("CC", threshold_cc)).limit(num_images)
 
     img_percentile = imgColl.reduce(reducer=ee.Reducer.percentile(percentiles=[50]))
     return img_percentile
+"""
 
-
-
-def CloudClusterScore(img, region_of_interest, num_images=3, method_pred="persistence",
+def CloudClusterScore(img, region_of_interest,
+                      method_pred= PARAMS_CLOUDCLUSTERSCORE_DEFAULT["method"],
+                      threshold_cc=PARAMS_CLOUDCLUSTERSCORE_DEFAULT["threshold_cc"],
+                      method_number=PARAMS_SELECTBACKGROUND_DEFAULT['method_number'],
+                      number_of_images=PARAMS_SELECTBACKGROUND_DEFAULT['number_of_images'],
+                      number_preselect=PARAMS_SELECTBACKGROUND_DEFAULT['number_preselect'],
                       params=None):
     """
     Function to obtain the cloud cluster score in one shot.
-
-    :param img:
-    :param region_of_interest:
-    :param num_images:
-    :param method_pred:
-    :param params:
-    :return:  cloud mask (2: cloud,1: shadow, 0: clear)
+    Params are defined in parameters.py file
+        :param img: 
+        :param region_of_interest: 
+        :param method_pred=PARAMS_CLOUDCLUSTERSCORE_DEFAULT["method"]: 
+        :param threshold_cc=PARAMS_CLOUDCLUSTERSCORE_DEFAULT["threshold_cc"]: 
+        :param method_number=PARAMS_SELECTBACKGROUND_DEFAULT['method_number']: 
+        :param number_of_images=PARAMS_SELECTBACKGROUND_DEFAULT['number_of_images']: 
+        :param number_preselect=PARAMS_SELECTBACKGROUND_DEFAULT['number_preselect']: 
+        :param params=None: 
+        :return:  cloud mask (2: cloud,1: shadow, 0: clear)
     """
 
+    print("_" * 60 + "\n")
+    print(" " * 5 + "- Méthode de clustering utilisé: " + method_pred)
+    print(" " * 5 + "- Methode détection background: " + str(method_number))
+    print("_" * 60)
+
+
     if params is None:
-        params = dict(parameters.PARAMS_CLOUDCLUSTERSCORE_DEFAULT)
+        params = dict(PARAMS_CLOUDCLUSTERSCORE_DEFAULT)
     else:
         temp = dict(params)
-        params = dict(parameters.PARAMS_CLOUDCLUSTERSCORE_DEFAULT)
+        params = dict(PARAMS_CLOUDCLUSTERSCORE_DEFAULT)
         params.update(temp)
 
-    image_with_lags = SelectImagesTraining(img,
-                                            threshold_cc=params["threshold_cc"],
-                                            region_of_interest=region_of_interest,
-                                            num_images=num_images)
+    image_with_lags = SelectImagesTraining(method_number, img, region_of_interest,
+                                            number_of_images, number_preselect,
+                                            threshold_cc)
     
     cloudBitMask = 1 << 10
     cirrusBitMask = 1 << 11
@@ -598,7 +619,7 @@ def CloudClusterScore(img, region_of_interest, num_images=3, method_pred="persis
     
     # reflectance_bands_landsat8 = ["B%d" % i for i in range(1, 12)]
 
-    reflectance_bands_sentinel2 = parameters.SENTINEL2_BANDNAMES
+    reflectance_bands_sentinel2 = SENTINEL2_BANDNAMES
 
     # forecast_bands_landsat8 = [i + "_forecast" for i in reflectance_bands_sentinel2]
     forecast_bands_sentinel2 = [i + "_forecast" for i in reflectance_bands_sentinel2]
@@ -608,14 +629,15 @@ def CloudClusterScore(img, region_of_interest, num_images=3, method_pred="persis
         img_forecast = image_with_lags.select(reflectance_bands_sentinel2_lag_1, forecast_bands_sentinel2)
 
     elif method_pred == "percentile":
-        img_percentile = perso.PredictPercentile(img, region_of_interest, num_images=num_images)
+        img_percentile = PredictPercentile(method_number, img, region_of_interest,
+                                             number_of_images, number_preselect, threshold_cc)
         reflectance_bands_sentinel2_perc50 = [i + "_p50" for i in reflectance_bands_sentinel2]
         img_forecast = img_percentile.select(reflectance_bands_sentinel2_perc50,
                                         forecast_bands_sentinel2)
 
     elif method_pred == "linear":
         modelo = ModelCloudMasking(image_with_lags, reflectance_bands_sentinel2,
-                                   clouds, num_images, region_of_interest)
+                                   clouds, number_of_images, region_of_interest)
         if params["trainlocal"]:
             modelo.TrainLinearLocal(sampling_factor=params["sampling_factor"],
                                     lmbda=params["lmbda"], with_task=params["with_task"])
@@ -627,7 +649,7 @@ def CloudClusterScore(img, region_of_interest, num_images=3, method_pred="persis
 
     elif method_pred == "kernel":
         modelo = ModelCloudMasking(image_with_lags, reflectance_bands_sentinel2,
-                                   clouds, num_images, region_of_interest)
+                                   clouds, number_of_images, region_of_interest)
         if params["trainlocal"]:
             modelo.TrainRBFKernelLocal(sampling_factor=params["sampling_factor"],
                                        lmbda=params["lmbda"], gamma=params["gamma"],
