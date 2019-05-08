@@ -423,6 +423,8 @@ def ComputeCloudCoverGeom(img, region_of_interest):
 # _REFLECTANCE_BANDS_LANDSAT8 = ["B%d" % i for i in range(1, 12)]
 _REFLECTANCE_BANDS_SENTINEL2 = SENTINEL2_BANDNAMES
 
+
+"""
 def ImagesWithCC(sentinel_img, start_date, end_date, region_of_interest=None, include_img=False):
     sentinel_info = sentinel_img.getInfo()
     sentinel_full_id = sentinel_info['id']
@@ -473,34 +475,9 @@ def ImagesWithCC(sentinel_img, start_date, end_date, region_of_interest=None, in
         
     # Compute CC for the RoI
     return imgColl.map(lambda x: ComputeCloudCoverGeom(x, region_of_interest))
+"""
 
-
-def PreviousImagesWithCC(sentinel_img, region_of_interest=None,
-                         REVISIT_DAY_PERIOD=15, NUMBER_IMAGES=30,
-                         include_img=False):
-    """
-    Return the NUMBER_IMAGES previous images with cloud cover
-
-    :param sentinel_img:
-    :param region_of_interest:
-    :param REVISIT_DAY_PERIOD:
-    :param NUMBER_IMAGES:
-    :param include_img: if the current image (sentinel_img) should be included in the series
-    :return:
-    """
-    # Get collection id
-
-    dateDebut = ee.Date(ee.Number(sentinel_img.get("system:time_start")).subtract(
-                            REVISIT_DAY_PERIOD * NUMBER_IMAGES * 24 * 60 * 60 * 1000))
-    dateFin = ee.Date(sentinel_img.get("system:time_start"))
-
-    return ImagesWithCC(sentinel_img,
-                        dateDebut,
-                        dateFin,
-                        region_of_interest=region_of_interest,
-                        include_img=include_img)
-
-
+"""
 def NextImagesWithCC(sentinel_img, region_of_interest=None,
                      REVISIT_DAY_PERIOD=15, NUMBER_IMAGES=30,
                      include_img=False):
@@ -510,7 +487,7 @@ def NextImagesWithCC(sentinel_img, region_of_interest=None,
                             REVISIT_DAY_PERIOD * NUMBER_IMAGES * 24 * 60 * 60 * 1000)),
                         region_of_interest=region_of_interest,
                         include_img=include_img)
-
+"""
 
 # LANDSAT8_BANDNAMES = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'BQA']
 
@@ -520,7 +497,7 @@ def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
                          threshold_cc):
     """
     Given a landsat image, it returns the number_of_images previous images together with the current image with CC lower than
-     THRESHOLD_CC. The returned image contains previous images in bands. It will have num_bands*(number_of_images+1) bands
+    THRESHOLD_CC. The returned image contains previous images in bands. It will have num_bands*(number_of_images+1) bands
 
         :param method_number: Number of the method used
         :param sentinel_img: image to analyzed
@@ -530,17 +507,17 @@ def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
         :param number_preselect: 
         :param threshold_cc:
         :return:
-            :rtype ee.Image
+        :rtype ee.Image
     """                    
 
     band_names = SENTINEL2_BANDNAMES
 
     imgColl = PreviousImagesWithCCSentinel(method_number,
-                                                sentinel_img,
-                                                number_of_images,
-                                                threshold_cc,
-                                                number_preselect,
-                                                region_of_interest)
+                                            sentinel_img,
+                                            number_of_images,
+                                            threshold_cc,
+                                            number_preselect,
+                                            region_of_interest)
     size_img_coll = ee.Number(imgColl.size())
 
     offset = ee.Number(0).max(size_img_coll.subtract(number_of_images))
@@ -590,8 +567,8 @@ def CloudClusterScore(img, region_of_interest,
     """
 
     print("_" * 60 + "\n")
-    print(" " * 5 + "- Méthode de clustering utilisé: " + method_pred)
-    print(" " * 5 + "- Methode détection background: " + str(method_number))
+    print(" " * 5 + "- Clustering method used: " + method_pred)
+    print(" " * 5 + "- Background detection method used: " + str(method_number))
     print("_" * 60)
 
 
@@ -603,22 +580,19 @@ def CloudClusterScore(img, region_of_interest,
         params.update(temp)
 
     image_with_lags = SelectImagesTraining(method_number, img, region_of_interest,
-                                            number_of_images, number_preselect,
+                                            20, number_preselect,
                                             threshold_cc)
     
     cloudBitMask = 1 << 10
     cirrusBitMask = 1 << 11
 
+    # clouds_original = img.select('QA60').bitwiseAnd(int('1010000000000000', 2)).gt(0)
     clouds_original = img.select('QA60').bitwiseAnd(cloudBitMask).eq(0)
     clouds_original = img.select('QA60').bitwiseAnd(cirrusBitMask).eq(0)
-
-    # clouds_original = img.select('QA60').bitwiseAnd(int('1010000000000000', 2)).gt(0)
-
     clouds = clouds_original.reduceNeighborhood(ee.Reducer.max(),
                                                 ee.Kernel.circle(radius=3))
-    
-    # reflectance_bands_landsat8 = ["B%d" % i for i in range(1, 12)]
 
+    # reflectance_bands_landsat8 = ["B%d" % i for i in range(1, 12)]
     reflectance_bands_sentinel2 = SENTINEL2_BANDNAMES
 
     # forecast_bands_landsat8 = [i + "_forecast" for i in reflectance_bands_sentinel2]

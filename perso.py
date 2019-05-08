@@ -60,7 +60,7 @@ def ComputeCloudCoverGeomSentinel(img, region_of_interest):
 
 
 def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, threshold_cc,
-                                 number_preselect, region_of_interest=None, include_img=False):
+                                 number_preselect, region_of_interest, include_img=False):
     """
     Return the NUMBER_IMAGES previous images with cloud cover
          
@@ -70,7 +70,7 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
         :param number_of_images: 
         :param threshold_cc: 
         :param number_preselect: 
-        :param region_of_interest=None: 
+        :param region_of_interest: 
         :param include_img=False: if the current image (sentinel_img) should be included in the series 
     """
 
@@ -80,7 +80,7 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
     sentinel_info = sentinel_img.getInfo()                                  # Sentinel infos
     sentinel_full_id = sentinel_info['id']                                  # full image ID
     image_index = sentinel_info['properties']['system:index']               # Imafe index
-    sentinel_collection = sentinel_full_id.replace("/" + image_index, "")   # Sentinel collection (base for background) 
+    sentinel_collection = sentinel_full_id.replace("/" + image_index, "")  # Sentinel collection (base for background) 
 
     MGRS_TILE = sentinel_info['properties']['MGRS_TILE']                    # Tile the image analyzed
 
@@ -95,9 +95,14 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
             .filterBounds(region_of_interest) \
             .filter(ee.Filter.eq("MGRS_TILE", MGRS_TILE))
 
+    # Inclusion of current image in background
+    if not include_img:
+        sentinel_collection = sentinel_collection.filter(
+            ee.Filter.neq('system:index', image_index))
+
     # Récupération du background selon la méthode passée en argument
-    imgColl = callback_function_bg(methodNumber, sentinel_img, sentinel_collection,
-                                    number_of_images, threshold_cc, number_preselect)
+    imgColl = callback_function_bg(methodNumber, sentinel_img, sentinel_collection, \
+                                   number_of_images, threshold_cc, number_preselect, region_of_interest)
 
     # Get rid of images with many invalid values
     def _count_valid(img):
@@ -105,16 +110,17 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
         mascara = mascara.select(SENTINEL2_BANDNAMES)
         mascara = mascara.reduce(ee.Reducer.allNonZero())
 
-        dictio = mascara.reduceRegion(reducer=ee.Reducer.mean(), geometry=region_of_interest,
+        dictio = mascara.reduceRegion(reducer=ee.Reducer.mean(),
+                                      geometry=region_of_interest,
                                       bestEffort=True)
 
         img = img.set("valids", dictio.get("all"))
 
         return img
 
-    imgColl = imgColl.map(_count_valid).filter(ee.Filter.greaterThanOrEquals('valids', .5))
-    if not include_img:
-        imgColl = imgColl.filter(ee.Filter.neq('system:index', image_index))
+    imgColl = imgColl.map(_count_valid).sort("valids").limit(number_of_images)
+    # .filter(ee.Filter.greaterThanOrEquals('valids', .5))
+    
         
     # Compute CC for the RoI
     # imgColl = imgColl.map(lambda x: ComputeCloudCoverGeomSentinel(x, region_of_interest))
@@ -138,8 +144,7 @@ def PredictPercentile(method_number, img, region_of_interest, number_of_images,
                                             threshold_cc, number_preselect,
                                             region_of_interest, include_img=False,
                                             )
-
-    img_percentile = imgColl.reduce(reducer=ee.Reducer.percentile(percentiles=[50]))
+    img_percentile = imgColl.reduce(reducer = ee.Reducer.percentile(percentiles = [50]))
     return img_percentile
 
 

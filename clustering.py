@@ -96,6 +96,8 @@ def ClusterClouds(image,
 
     training, media, std = normalization.ComputeNormalizationFeatureCollection(training,
                                                                                BANDS_MODEL)
+
+
     if do_clustering:
         clusterer = ee.Clusterer.wekaKMeans(n_clusters).train(training)
         img_differences_normalized = normalization.ApplyNormalizationImage(img_differences,
@@ -124,6 +126,8 @@ def ClusterClouds(image,
         reflectance_score = arrayImagenorm
 
         multitemporal_score = arrayImageDiffnorm.multiply(arrayImageDiffmean)
+
+
 
     # Apply thresholds
     if threshold_reflectance <= 0:

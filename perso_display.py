@@ -7,7 +7,7 @@ IMAGE_PATH_INDEX = param.IMAGE_PATH_INDEX
 IMAGE_TITLE_INDEX = param.IMAGE_TITLE_INDEX
 
 
-def affichage(list_images_show, graph_title=None, number_of_row = 2, number_of_col = 3):
+def affichage(list_images_show, graph_title=None, number_of_row = 2, number_of_col = 3, save = False, display= True, filename="dafault.png"):
     """
     Display a list of images in matplotlib windows
 
@@ -17,14 +17,20 @@ def affichage(list_images_show, graph_title=None, number_of_row = 2, number_of_c
         :param number_of_col=3: 
     """
 
-    fig = plt.figure()
+
+
     for i, image in enumerate(list_images_show):
-        a = fig.add_subplot(number_of_row, number_of_col, i+1)
+        plt.subplot(number_of_row, number_of_col, i+1)
+        plt.title(image[IMAGE_TITLE_INDEX])
         plt.imshow(mpimg.imread(image[IMAGE_PATH_INDEX]))
-        a.set_title(image[IMAGE_TITLE_INDEX])
         plt.axis('off')
 
-    if graph_title:
-        fig.suptitle(graph_title, fontsize=16)
+        if graph_title:
+            plt.suptitle(graph_title, fontsize=16)
 
-    plt.show()
+    if display:
+        plt.show()
+    
+    if save:
+        plt.savefig(filename)
+

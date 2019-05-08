@@ -1,4 +1,5 @@
 import ee
+from ee_ipl_uv_perso.perso_tree import getMaskTree1, getMaskTree2, getMaskTree3
 
 #########################################
 # Set of methods used to find images    #
@@ -12,8 +13,13 @@ import ee
 
 def getImagesNeightboor(img, dataset_asc, dataset_desc, number_of_images):
     """
-        Select 10 previous images
-        If not enough images, select image in futur, starting after the current date image
+    Select 10 previous images
+    If not enough images, select image in futur, starting after the current date image
+    docstring here
+        :param img: 
+        :param dataset_asc: from more recent to older images
+        :param dataset_desc: from older to more recent
+        :param number_of_images: 
     """
     # Select `number_of_images` previous images
     images = dataset_asc.filter(ee.Filter.lt("system:time_start", img.get("system:time_end"))) \
@@ -49,7 +55,8 @@ def method1(sentinel_img, sentinel_collection, number_of_images):
     dataset_date_asc = sentinel_collection.sort("system:time_start", False)
     dataset_date_desc = sentinel_collection.sort("system:time_start")
     imgColl = getImagesNeightboor(sentinel_img, dataset_date_asc,
-                                  dataset_date_desc, number_of_images)
+                                  dataset_date_desc, number_of_images) \
+                                .sort("CLOUDY_PIXEL_PERCENTAGE", False)
     return imgColl
 
 
@@ -57,7 +64,7 @@ def method2(sentinel_img, sentinel_collection, number_of_images, threshold_cc):
     """
     Filter :
         - CC < 10%
-        - 20 previous iamges
+        - 20 previous images
     Arguments:
         :param sentinel_img: 
         :param sentinel_collection: 
@@ -69,7 +76,9 @@ def method2(sentinel_img, sentinel_collection, number_of_images, threshold_cc):
     dataset_date_asc = sentinel_collection.sort("system:time_start", False)
     dataset_date_desc = sentinel_collection.sort("system:time_start")
     imgColl = getImagesNeightboor(sentinel_img, dataset_date_asc,
-                                        dataset_date_desc, number_of_images)
+                                        dataset_date_desc, number_of_images) \
+                                        .sort("CLOUDY_PIXEL_PERCENTAGE", False)
+
     return imgColl
 
 
@@ -81,7 +90,7 @@ def method3(sentinel_collection, number_of_images):
         :param sentinel_collection: 
         :param number_of_images: 
     """
-    imgColl = sentinel_collection.sort("CLOUDY_PIXEL_PERCENTAGE").limit(number_of_images)
+    imgColl = sentinel_collection.sort("CLOUDY_PIXEL_PERCENTAGE", False).limit(number_of_images)
     return imgColl
 
 
@@ -123,6 +132,99 @@ def method5(sentinel_img, sentinel_collection, number_of_images, number_preselec
     dataset_date_desc = sentinel_collection.sort("system:time_start")
     imgColl = getImagesNeightboor(sentinel_img, dataset_date_asc,
                                     dataset_date_desc, number_preselect)
-    imgColl = imgColl.sort("CLOUDY_PIXEL_PERCENTAGE").limit(number_of_images)
+    imgColl = imgColl.sort("CLOUDY_PIXEL_PERCENTAGE", False).limit(number_of_images)
     return imgColl
-    
+
+
+def method6(image, sentinel_collection, number_of_images, threshold_cc, region_of_interest):
+    """
+    Compute mean cloud cover and add it as property to the image
+        - Use tree method 1
+    Filter : take the `number_of_images` least cloudy
+
+    Arguments:
+        :param image:
+        :param sentinel_collection:
+        :param number_of_images:
+        :param threshold_cc:
+        :param region_of_interest:
+    """
+
+    def compute_CC_M1(image):
+        """
+        Compute Cloud Cover estimation based on method tree 1
+        """
+        clouds = getMaskTree1(image)
+        dictio = clouds.reduceRegion(reducer=ee.Reducer.mean(),
+                                     geometry=region_of_interest,
+                                     scale=30,
+                                     bestEffort=True)
+        numerito = ee.Number(dictio.get("constant")).multiply(100)
+        image = image.set("CC", numerito)
+        return image
+
+    imgColl = sentinel_collection.map(compute_CC_M1).sort("CC")
+    imgColl = imgColl.sort("CC").limit(number_of_images)
+    return imgColl
+
+
+def method7(image, sentinel_collection, number_of_images, threshold_cc, region_of_interest):
+    """
+    Compute mean cloud cover and add it as property to the image
+        - Use tree method 2
+    Filter : take the `number_of_images` least cloudy
+
+    Arguments:
+        :param image:
+        :param sentinel_collection:
+        :param number_of_images:
+        :param threshold_cc:
+        :param region_of_interest:
+    """
+
+    def compute_CC_M2(image):
+        """
+        Compute Cloud Cover estimation based on method tree 2
+        """
+        clouds = getMaskTree2(image)
+        dictio = clouds.reduceRegion(reducer=ee.Reducer.mean(), geometry=region_of_interest,
+                                     bestEffort=True)
+        numerito = ee.Number(dictio.get("cloud")).multiply(100)
+        image = image.set("CC", numerito)
+        return image
+
+    imgColl = sentinel_collection.map(compute_CC_M2).sort("CC")
+    imgColl = imgColl.sort("CC").limit(number_of_images)
+    return imgColl
+
+
+def method8(image, sentinel_collection, number_of_images, threshold_cc, region_of_interest):
+    """
+    Compute mean cloud cover and add it as property to the image
+        - Use tree method 3
+    Filter : take the `number_of_images` least cloudy
+
+    Arguments:
+        :param image:
+        :param sentinel_collection:
+        :param number_of_images:
+        :param threshold_cc:
+        :param region_of_interest:
+    """
+
+    def compute_CC_M3(image):
+        """
+        Compute Cloud Cover estimation based on method tree 3
+        """
+        clouds = getMaskTree3(image)
+        dictio = clouds.reduceRegion(reducer=ee.Reducer.mean(),
+                                     geometry=region_of_interest,
+                                     bestEffort=True)
+        numerito = ee.Number(dictio.get("cloud")).multiply(100)
+        image = image.set("CC", numerito)
+        return image
+
+    imgColl = sentinel_collection.map(compute_CC_M3).sort("CC")
+    imgColl = imgColl.sort("CC").limit(number_of_images)
+    return imgColl
+

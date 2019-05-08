@@ -33,7 +33,9 @@ def getMaskTree1(image):
         '( (b("B3") > 0.325) && (b("B11") > 0.267) && (b("B7") < 1.544)) ? 1 : 0'
     )
     # full criteria = Clouds + Cirrus
-    return expr1.Or(expr2.Or(expr3))
+    new_band = expr1.Or(expr2.Or(expr3))
+    image = image.addBands(new_band).select(["constant"])
+    return new_band
 
 
 ####################################
