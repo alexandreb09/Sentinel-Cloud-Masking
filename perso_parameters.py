@@ -16,9 +16,9 @@ DATASET_INDEX: str = "COPERNICUS/S2"
 
 
 PARAMS_SELECTBACKGROUND_DEFAULT: dict = {
-    "number_of_images": 3,
+    "number_of_images": 20,
     "method_number": 1,
-    "number_preselect": 20,
+    "number_preselect": 40,
 }
 
 # Default parameters for cloud clustering
@@ -38,6 +38,7 @@ PARAMS_CLOUDCLUSTERSCORE_DEFAULT: dict = {
     "n_clusters": 10,
     "growing_ratio": 2,
     "bands_thresholds": [BLUE, GREEN, RED],
+    "tileScale": 2,
 }
 
 IMAGE_NAMES: dict = {
@@ -47,7 +48,6 @@ IMAGE_NAMES: dict = {
     4: DATASET_INDEX + '/' + '20180610T114349_20180610T114347_T30VUJ',
     5: DATASET_INDEX + '/' + '20180116T114421_20180116T114418_T30VVH',
     6: DATASET_INDEX + '/' + '20180225T105019_20180225T105018_T31TDJ',  # Toulouse
-    
 }
 
          

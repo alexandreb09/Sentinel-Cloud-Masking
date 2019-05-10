@@ -518,6 +518,9 @@ def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
                                             threshold_cc,
                                             number_preselect,
                                             region_of_interest)
+
+    print("Nb previous images (imageCollection): ", imgColl.size().getInfo())
+    
     size_img_coll = ee.Number(imgColl.size())
 
     offset = ee.Number(0).max(size_img_coll.subtract(number_of_images))
@@ -580,7 +583,7 @@ def CloudClusterScore(img, region_of_interest,
         params.update(temp)
 
     image_with_lags = SelectImagesTraining(method_number, img, region_of_interest,
-                                            20, number_preselect,
+                                            number_of_images, number_preselect,
                                             threshold_cc)
     
     cloudBitMask = 1 << 10

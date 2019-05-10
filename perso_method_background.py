@@ -132,7 +132,7 @@ def method5(sentinel_img, sentinel_collection, number_of_images, number_preselec
     dataset_date_desc = sentinel_collection.sort("system:time_start")
     imgColl = getImagesNeightboor(sentinel_img, dataset_date_asc,
                                     dataset_date_desc, number_preselect)
-    imgColl = imgColl.sort("CLOUDY_PIXEL_PERCENTAGE", False).limit(number_of_images)
+    imgColl = imgColl.sort("CLOUDY_PIXEL_PERCENTAGE").limit(number_of_images)
     return imgColl
 
 

@@ -1,6 +1,6 @@
 import subprocess
 import ee
-from ee_ipl_uv_perso.perso_method_background import  *
+from ee_ipl_uv_perso.perso_method_background import *
 
 
 def getImageBoundList(image):
@@ -8,7 +8,8 @@ def getImageBoundList(image):
     ROI = image.get("system:footprint").getInfo().coordinates
     return ee.Geometry.Polygon(ROI)
 
-def getCenterPointFromImage(image):        
+
+def getCenterPointFromImage(image):
     lineRing = image.getInfo()['properties']['system:footprint']
     center = ee.Array(lineRing.coordinates)
     return center.reduce(ee.Reducer.mean(), [0]).getInfo()['0']
@@ -56,8 +57,14 @@ def callback_function_bg(numMethod, sentinel_img, sentinel_collection, number_of
     # Execute the function
     return func(*params)
 
+
 def cleanScreen():
     """
     Clear terminal screen on Windows
     """
     subprocess.Popen("cls", shell=True).communicate()
+
+
+def getGeometryImage(image):
+    pol = image.get('system:footprint').getInfo()['coordinates']
+    return ee.Geometry.Polygon(pol)

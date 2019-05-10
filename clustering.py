@@ -1,4 +1,5 @@
 from ee_ipl_uv_perso import normalization
+from ee_ipl_uv_perso.perso_parameters import PARAMS_CLOUDCLUSTERSCORE_DEFAULT
 import ee
 
 BANDS_MODEL = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B9", "B10", "B11"]
@@ -9,7 +10,8 @@ def SelectClusters(image,
                    result_clustering,
                    n_clusters,
                    bands_thresholds = ["B2", "B3", "B4"],
-                   region_of_interest=None):
+                   region_of_interest=None,
+                   tileScale=1):
     """
     Function that contains the logic to create the cluster score mask. given the clustering result.
 
@@ -37,7 +39,8 @@ def SelectClusters(image,
         clusteri = img_diff_clus.reduceRegion(ee.Reducer.mean(),
                                               geometry=region_of_interest,
                                               bestEffort=True,
-                                              scale=30)
+                                              scale=30,
+                                              tileScale=tileScale)
         clusteri_diff = clusteri.toArray(bands_norm_difference)
         clusteri_refl = clusteri.toArray(bands_thresholds)
         clusteri_refl_norm = clusteri_refl.multiply(clusteri_refl).reduce(ee.Reducer.mean(),
@@ -71,7 +74,8 @@ def ClusterClouds(image,
                   threshold_reflectance=.175,
                   bands_thresholds=["B2", "B3", "B4"],
                   growing_ratio=2,
-                  n_clusters=10, region_of_interest=None):
+                  n_clusters=10, region_of_interest=None,
+                  tileScale=PARAMS_CLOUDCLUSTERSCORE_DEFAULT['tileScale']):
     """
     Function that compute the cloud score given the differences between the real and predicted image.
 
@@ -92,14 +96,16 @@ def ClusterClouds(image,
 
     img_differences = image.subtract(background_prediction)
 
-    training = img_differences.sample(region=region_of_interest, scale=30, numPixels=numPixels)
-
+    training = img_differences.sample(region = region_of_interest,
+                                      scale = 30, numPixels = numPixels,
+                                      tileScale= tileScale)
     training, media, std = normalization.ComputeNormalizationFeatureCollection(training,
                                                                                BANDS_MODEL)
 
-
+    
     if do_clustering:
         clusterer = ee.Clusterer.wekaKMeans(n_clusters).train(training)
+        
         img_differences_normalized = normalization.ApplyNormalizationImage(img_differences,
                                                                            BANDS_MODEL,
                                                                            media, std)
@@ -107,7 +113,8 @@ def ClusterClouds(image,
 
         multitemporal_score, reflectance_score = SelectClusters(image, background_prediction,
                                                                 result, n_clusters, bands_thresholds,
-                                                                region_of_interest)
+                                                                region_of_interest,
+                                                                tileScale=tileScale)
 
     else:
         arrayImageDiff = img_differences.select(bands_thresholds).toArray()
