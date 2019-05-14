@@ -98,7 +98,8 @@ def ClusterClouds(image,
 
     training = img_differences.sample(region = region_of_interest,
                                       scale = 30, numPixels = numPixels,
-                                      tileScale= tileScale)
+                                      tileScale= tileScale
+                                      )
     training, media, std = normalization.ComputeNormalizationFeatureCollection(training,
                                                                                BANDS_MODEL)
 
@@ -114,7 +115,8 @@ def ClusterClouds(image,
         multitemporal_score, reflectance_score = SelectClusters(image, background_prediction,
                                                                 result, n_clusters, bands_thresholds,
                                                                 region_of_interest,
-                                                                tileScale=tileScale)
+                                                                tileScale=tileScale
+                                                                )
 
     else:
         arrayImageDiff = img_differences.select(bands_thresholds).toArray()
