@@ -3,11 +3,11 @@ import numpy as np
 import os
 import h5py
 import ee
+import sys
 
 
 from utils import getDates, startProgress, progress, endProgress
 
-import sys
 sys.path.append("../Methods_cloud_masking")
 from perso_tree import getMaskTree1
 
@@ -21,37 +21,56 @@ def getDataFromH5File(filename, number_rows_kept=None):
 
     # Open file
     with h5py.File(filename, 'r') as f:
+
         # Reduce the number of row read
-        if not (number_rows_kept):
+        if not number_rows_kept:
             number_rows_kept = f["longitude"].shape[0]
 
         # Extra data
         data = {
             "keys": list(f.keys()),
             "class_names": f["class_names"][()].astype('U13'),
-            "band_names": ["B" + bd.astype('U13') for bd in f["band"]],
             "class_ids": [id for id in f["class_ids"]],
         }
 
         # DataFrame creation
         df = pd.DataFrame({
+            "id_GEE": f["id_GEE"][:number_rows_kept].astype(str),
             "longitude": f["longitude"][:number_rows_kept].astype(np.float64),
-            "product_id": f["product_id"][:number_rows_kept].astype(str),
-            "granule_id": f["granule_id"][:number_rows_kept].astype(str),
             "latitude": f["latitude"][:number_rows_kept].astype(np.float64),
-            "pixel_class": f["classes"][:number_rows_kept].astype(np.float64),
+            "cloud": f["cloud"][:number_rows_kept].astype(np.float64) == 1,
         })
-        df["cloud"] = df.pixel_class.isin([40, 50])
+        
+        print("Nb pixels:", f["longitude"].shape[0])
 
-        print(f["longitude"].shape)
 
-        for i, band in enumerate(data["band_names"]):
-            df[band] = (f["spectra"][:number_rows_kept, i]*10000).astype(int)
-
-    df = ajout_GEE_Ids(df)
+    # Remove valueless column
+    # df = df[["longitude", "latitude", "cloud", "id_GEE"]]
 
     print("Loading file done !")
     return data, df
+
+
+
+def createTrainingVerifDataset(df):
+    """ Remove all the group of image having less than
+            - 1000 cloud pixels 
+            - 1000 non cloud pixels
+    Arguments:
+        :param df: dataframe to process
+    """
+    list_to_keep = []
+    
+    for name, df_images in df.groupby('id_GEE'):
+        nb_pixel_cloud = len(df_images[df_images.cloud == True])
+        nb_pixel_not_cloud = len(df_images[df_images.cloud == True])
+        print(str(nb_pixel_cloud) + " + " + str(nb_pixel_not_cloud) + " = " + str(len(df_images.id_GEE)))
+        if nb_pixel_cloud > 1000 or nb_pixel_not_cloud > 1000:
+            list_to_keep.append(name)
+
+    df = df[df.id_GEE.isin(list_to_keep)]
+
+    return df
 
 
 def printClassNames(class_ids, class_names):
@@ -60,55 +79,7 @@ def printClassNames(class_ids, class_names):
         print("%2d %s" % (id, name))
 
 
-"""
-def getIdsImagesSentinels(sentinel):
-    granual_id_list = ee.Dictionary(sentinel.aggregate_histogram('GRANULE_ID')).keys()
-    return granual_id_list.getInfo()
-"""
 
-
-def ajout_GEE_Ids(df):
-    """Create a new columns: id_GEE (image id in GEE dataset)
-        :param df: 
-    """
-    
-    list_ID = []
-    dict_ID = {"33UUUS2A_OPER_PRD_MSIL1C_PDMC_20160817T230018_R022_V20160817T101032_20160817T101559.SAFE":
-               "COPERNICUS/S2/20160817T101032_20160817T171509_T33UUU"}
-
-    dataset = ee.ImageCollection("COPERNICUS/S2")
-
-    # Initialise progross bar
-    nb_rows = df["granule_id"].shape[0]
-    startProgress("Translation ID GEE")
-
-    # For each pixel from .h5 file
-    for i, (granule_id, product_id) in enumerate(zip(df["granule_id"], df["product_id"])):
-        # If the granule + product_id unkonw:
-        if granule_id + product_id not in dict_ID.keys():
-            date_deb, date_fin = getDates(product_id)               # read dates begin + end
-            # Filter dataset per date, area
-            # + sort per time + select first image
-            image = dataset.filterDate(date_deb, date_fin) \
-                            .filterMetadata('MGRS_TILE', 'equals', granule_id) \
-                            .sort("system:time_end") \
-                            .first()
-            # Add id to list of known id
-            dict_ID[granule_id + product_id] = image.getInfo()["id"]
-
-        # Set GEE image id in dataframe
-        list_ID.append(dict_ID[granule_id + product_id])
-        
-        # Update progress bar
-        if (i % (nb_rows // 100) == 0):
-            progress(i/nb_rows*100)
-
-    # Add id_GEE column
-    df["id_GEE"] = pd.DataFrame(list_ID)
-    
-    # End progress bar
-    endProgress()
-    return df
 
 def newColumnsFromImage(df, image):    
     coordinates = df[["longitude", "latitude"]].values.tolist()
@@ -121,18 +92,18 @@ def newColumnsFromImage(df, image):
         return image.reduceRegion(ee.Reducer.first(), point, 20).get("constant")
 
     new_col = array_coordinate_GEE.map(setResult)
-    
+
     return new_col.getInfo()
 
 def applyTree1Masking(df):
     list_image_id_df = np.unique(df[["id_GEE"]])
-    print(type(list_image_id_df))
-    print("List images:", [print(img) for img in list_image_id_df])
+    # print(type(list_image_id_df))
+    # print("List images:", [print(img) for img in list_image_id_df])
 
     # creation new dataframe
     df_final = pd.DataFrame()
     for image_id_gee in list_image_id_df:
-        print("id: ", image_id_gee)
+        # print("id: ", image_id_gee)
         image = ee.Image(image_id_gee)
         maskTree1 = getMaskTree1(image)
         
@@ -147,24 +118,26 @@ def applyTree1Masking(df):
 if __name__ == "__main__":
     ee.Initialize()
 
-    filename = 'Data/20170523_s2_manual_classification_data.h5'
-    number_rows_kept = 200000
+    filename = 'Data/dataset_part1_20160914.h5'
+    filename2 = 'Data/dataset_part2_20160914.h5'
+    filename3 = 'Data/dataset_part3_20170710.h5'
+    number_rows_kept = 3000000
     
     
     data, df = getDataFromH5File(filename, number_rows_kept=number_rows_kept)
+    # data2, df2 = getDataFromH5File(filename2, number_rows_kept=number_rows_kept)
+
+    print("Nb photos: ", len(df.groupby(by="id_GEE")))
+    # print(df.groupby(by="id_GEE").size())
     
-    df = applyTree1Masking(df)
-    print(df.head(10))
+    # df = applyTree1Masking(df)
 
-
-
+    createTrainingVerifDataset(df)
     
     pd.options.display.max_colwidth = 100
     print(df[:5])
-
-
-    # df = df.iloc[4000]
-
+    # print(df2[:5])
+    
     # print(df[ df.columns[6:19]].tail(1))
     # pd.options.display.max_colwidth = 100
     # print(df[["granule_id", "product_id"]].tail(1))
@@ -180,8 +153,6 @@ if __name__ == "__main__":
     # [print(x) for x in ids_image_sentinel[:5]]
     # print(np.unique(df[["granule_id", "product_id"]]))
 
-    # df_image1 = df.loc[df["granule_id"] == "32TNR"]
-    # createOneRaster(df_image1, "test.tif", 20)
 
 """
     df1 = df.groupby("granule_id").longitude.max()
