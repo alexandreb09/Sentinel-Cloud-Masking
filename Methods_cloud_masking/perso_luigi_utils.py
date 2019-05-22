@@ -1,6 +1,6 @@
 import subprocess
 import ee
-from ee_ipl_uv_perso.perso_method_background import *
+from Methods_cloud_masking.perso_method_background import *
 
 
 def getImageBoundList(image):

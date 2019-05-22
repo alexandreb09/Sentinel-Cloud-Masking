@@ -1,5 +1,5 @@
 import ee
-from ee_ipl_uv_perso.perso_tree import getMaskTree1, getMaskTree2, getMaskTree3
+from Methods_cloud_masking.perso_tree import getMaskTree1, getMaskTree2, getMaskTree3
 
 #########################################
 # Set of methods used to find images    #

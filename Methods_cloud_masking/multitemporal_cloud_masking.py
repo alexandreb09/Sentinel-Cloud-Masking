@@ -8,16 +8,16 @@ Created on June 12, 2016
 
 import ee
 import random
-from ee_ipl_uv_perso import kernel
-from ee_ipl_uv_perso import converters
-from ee_ipl_uv_perso import time_series_operations
-from ee_ipl_uv_perso import normalization
-from ee_ipl_uv_perso import clustering
-from ee_ipl_uv_perso.perso_parameters import SENTINEL2_BANDNAMES, \
+from Methods_cloud_masking import kernel
+from Methods_cloud_masking import converters
+from Methods_cloud_masking import time_series_operations
+from Methods_cloud_masking import normalization
+from Methods_cloud_masking import clustering
+from Methods_cloud_masking.perso_parameters import SENTINEL2_BANDNAMES, \
                                              PARAMS_CLOUDCLUSTERSCORE_DEFAULT, \
                                              PARAMS_SELECTBACKGROUND_DEFAULT, \
                                              CC_IMAGE_TOP
-from ee_ipl_uv_perso.perso import PredictPercentile, \
+from Methods_cloud_masking.perso import PredictPercentile, \
                                   PreviousImagesWithCCSentinel
 import logging
 
@@ -172,7 +172,7 @@ class ModelCloudMasking:
         :return:
         """
 
-        from ee_ipl_uv_perso import model_sklearn
+        from Methods_cloud_masking import model_sklearn
         best_params = None
         if not with_cross_validation:
             best_params = {"alpha": lmbda, "gamma": gamma}
@@ -300,7 +300,7 @@ class ModelCloudMasking:
         :return: forecasted image
         :rtype ee.Image
         """
-        from ee_ipl_uv_perso import model_sklearn
+        from Methods_cloud_masking import model_sklearn
         self._BuildDataSet(sampling_factor, normalize=False)
 
         ds_download_pd = converters.eeFeatureCollectionToPandas(self.datos, self.bands_modeling_estimation + ["weight"],
@@ -519,7 +519,7 @@ def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
                                             number_preselect,
                                             region_of_interest)
 
-    print("Nb previous images (imageCollection): ", imgColl.size().getInfo())
+    # print("Nb previous images (imageCollection): ", imgColl.size().getInfo())
     
     size_img_coll = ee.Number(imgColl.size())
 
@@ -569,7 +569,8 @@ def CloudClusterScore(img, region_of_interest,
         :return:  cloud mask (2: cloud,1: shadow, 0: clear)
     """
 
-    print("_" * 60 + "\n")
+    
+    # print("_" * 60 + "\n")
     print(" " * 5 + "- Clustering method used: " + method_pred)
     print(" " * 5 + "- Background detection method used: " + str(method_number))
     print("_" * 60)

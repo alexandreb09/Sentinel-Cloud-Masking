@@ -1,7 +1,7 @@
 import luigi
 import os
-from ee_ipl_uv_perso  import local_image
-from ee_ipl_uv_perso  import multitemporal_cloud_masking as mcm
+from Methods_cloud_masking  import local_image
+from Methods_cloud_masking  import multitemporal_cloud_masking as mcm
 import ee
 import logging
 

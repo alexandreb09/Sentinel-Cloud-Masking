@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-import ee_ipl_uv_perso.perso_parameters as param
+import Methods_cloud_masking.perso_parameters as param
 
 IMAGE_PATH_INDEX = param.IMAGE_PATH_INDEX
 IMAGE_TITLE_INDEX = param.IMAGE_TITLE_INDEX

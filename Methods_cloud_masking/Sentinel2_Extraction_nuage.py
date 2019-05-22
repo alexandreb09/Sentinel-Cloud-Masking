@@ -5,18 +5,18 @@
 import ee
 from datetime import datetime
 from IPython.display import Image, display, HTML
-from ee_ipl_uv_perso import multitemporal_cloud_masking
-from ee_ipl_uv_perso import download
-from ee_ipl_uv_perso import perso
-from ee_ipl_uv_perso import perso_display
-from ee_ipl_uv_perso import perso_tree
-from ee_ipl_uv_perso.perso_parameters import *
-from ee_ipl_uv_perso.perso_luigi_utils import cleanScreen
+from Methods_cloud_masking import multitemporal_cloud_masking
+from Methods_cloud_masking import download
+from Methods_cloud_masking import perso
+from Methods_cloud_masking import perso_display
+from Methods_cloud_masking import perso_tree
+from Methods_cloud_masking.perso_parameters import *
+from Methods_cloud_masking.perso_luigi_utils import cleanScreen
 import os
 import requests
 import matplotlib.pyplot as plt
 
-cleanScreen()
+# cleanScreen()
 
 ee.Initialize()
 

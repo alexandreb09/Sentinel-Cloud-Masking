@@ -6,7 +6,7 @@ Created on May 18, 2016
 
 """
 import ee
-from ee_ipl_uv_perso.parameters import SENTINEL2_BANDNAMES
+from Methods_cloud_masking.parameters import SENTINEL2_BANDNAMES
 
 
 class PercentileFilter:

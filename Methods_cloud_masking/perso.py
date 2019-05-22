@@ -5,8 +5,8 @@
 ##########################################
 #              Functions                 #
 ##########################################
-from ee_ipl_uv_perso.perso_parameters import *
-from ee_ipl_uv_perso.perso_luigi_utils import callback_function_bg
+from Methods_cloud_masking.perso_parameters import *
+from Methods_cloud_masking.perso_luigi_utils import callback_function_bg
 import ee
 
 

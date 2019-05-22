@@ -7,7 +7,7 @@ Created on May 24, 2016
 """
 import ee
 import numpy as np
-from ee_ipl_uv_perso  import converters
+from Methods_cloud_masking  import converters
 
 
 class RBFDistance:

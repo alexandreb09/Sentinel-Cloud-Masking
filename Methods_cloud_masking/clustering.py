@@ -1,5 +1,5 @@
-from ee_ipl_uv_perso import normalization
-from ee_ipl_uv_perso.perso_parameters import PARAMS_CLOUDCLUSTERSCORE_DEFAULT
+from Methods_cloud_masking import normalization
+from Methods_cloud_masking.perso_parameters import PARAMS_CLOUDCLUSTERSCORE_DEFAULT
 import ee
 
 BANDS_MODEL = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B9", "B10", "B11"]

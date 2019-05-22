@@ -15,7 +15,7 @@ import requests
 from collections import namedtuple
 import time
 import tempfile
-from ee_ipl_uv_perso .file_utils import addFormat, createTempFile
+from Methods_cloud_masking .file_utils import addFormat, createTempFile
 import shutil
 import logging
 
@@ -177,7 +177,7 @@ def MaybeDownloadWithTask(image, image_name, region=None, path=os.getcwd(), forc
     task = ee.batch.Export.image.toDrive(image,
                                          region=region,
                                          description=image_name,
-                                         folder="ee_ipl_uv_perso_downloads")
+                                         folder="Methods_cloud_masking_downloads")
     task.start()
     return WaitAndDownload(task, image_name, "tif", path, True)
 

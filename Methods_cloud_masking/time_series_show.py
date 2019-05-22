@@ -5,7 +5,7 @@ Created on June 15, 2016
 @contact: gonzalo.mateo-garcia@uv.es
 
 """
-from ee_ipl_uv_perso  import download
+from Methods_cloud_masking  import download
 from datetime import datetime
 import os
 
