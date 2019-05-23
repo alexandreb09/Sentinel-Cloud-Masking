@@ -572,7 +572,7 @@ def CloudClusterScore(img, region_of_interest,
     
     # print("_" * 60 + "\n")
     # print(" " * 5 + "- Clustering method used: " + method_pred)
-    print(" " * 5 + "- Method used: " + method_pred + " " + str(method_number))
+    # print(" " * 5 + "- Method used: " + method_pred + " " + str(method_number))
     # print("_" * 60)
 
 
@@ -585,8 +585,7 @@ def CloudClusterScore(img, region_of_interest,
 
     image_with_lags = SelectImagesTraining(method_number, img, region_of_interest,
                                             number_of_images, number_preselect,
-                                            threshold_cc)
-    
+                                            threshold_cc)    
     cloudBitMask = 1 << 10
     cirrusBitMask = 1 << 11
 

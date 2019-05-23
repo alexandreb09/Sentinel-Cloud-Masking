@@ -97,6 +97,7 @@ def create_training_evaluation_dataset(df):
     """
     training = pd.DataFrame()
     evaluation = pd.DataFrame()
+    print(len(df.groupby('id_GEE')))
     for name, images in df.groupby('id_GEE'):
         # Select cloudy and non cloudy dataframe
         df_cloud = images[images.cloud]
@@ -223,7 +224,10 @@ def createDataSet():
 
     # Create training and evaluation dataset
     training_df, evaluation_df = create_training_evaluation_dataset(df_total)
+    print("Nb pixel per image training: ", training_df.groupby(by="id_GEE").size())
 
     # Save both dataset to excel
     training_df.to_excel("training.xlsx")
     evaluation_df.to_excel("evaluation.xlsx")
+
+# createDataSet()
