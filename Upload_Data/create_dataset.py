@@ -106,11 +106,11 @@ def create_training_evaluation_dataset(df):
         df_cloud = shuffle(df_cloud)
         df_not_cloud = shuffle(df_not_cloud)
         
-        # Select the 1000 first pixel of training dataset
+        # Select the 1250 first pixels of training dataset
         training = training.append(df_cloud.iloc[:1250])
         training = training.append(df_not_cloud.iloc[:1250])
 
-        # Select the first 300 pixels for evalutaion dataset
+        # Select the first 375 pixels for evalutaion dataset
         evaluation = evaluation.append(df_cloud.iloc[1250:1625])
         evaluation = evaluation.append(df_not_cloud.iloc[1250:1625])
 

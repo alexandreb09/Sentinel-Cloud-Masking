@@ -571,9 +571,9 @@ def CloudClusterScore(img, region_of_interest,
 
     
     # print("_" * 60 + "\n")
-    print(" " * 5 + "- Clustering method used: " + method_pred)
-    print(" " * 5 + "- Background detection method used: " + str(method_number))
-    print("_" * 60)
+    # print(" " * 5 + "- Clustering method used: " + method_pred)
+    print(" " * 5 + "- Method used: " + method_pred + " " + str(method_number))
+    # print("_" * 60)
 
 
     if params is None:
