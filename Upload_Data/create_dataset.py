@@ -46,7 +46,7 @@ def getDataFromH5File(filename, number_rows_kept=None):
 
 
 
-def filter_nb_pixels_per_image(df, n=1625):
+def filter_nb_pixels_per_image(df, n=1781):
     """ Remove all the group of image having less than
             - n cloud pixels 
             - n non cloud pixels
@@ -69,12 +69,11 @@ def filter_nb_pixels_per_image(df, n=1625):
 
 
 def total_dataframe_filtered(filename, filename2):
-    """ Return one dataframe from the 3 dataset file sources 
+    """ Return one dataframe from the 2 dataset file sources 
         + filter them
     Arguments:
         :param filename: 
         :param filename2: 
-        :param filename3: 
     """
     df = getDataFromH5File(filename)
     df2 = getDataFromH5File(filename2)
@@ -82,7 +81,19 @@ def total_dataframe_filtered(filename, filename2):
     df = filter_nb_pixels_per_image(df)
     df2 = filter_nb_pixels_per_image(df2)
 
-    return df.append(df2)
+    df = df.append(df2)
+
+    print("Before nb images: ", len(df.groupby('id_GEE')))
+    list_unvalid = ["COPERNICUS/S2/20151206T042142_20151206T042447_T46RGV",
+                "COPERNICUS/S2/20151226T080933_20151226T112710_T36LXM",
+                "COPERNICUS/S2/20151228T002843_20151228T085259_T54HYD",
+                "COPERNICUS/S2/20151228T002843_20151228T085259_T55HCA",
+                "COPERNICUS/S2/20151228T002843_20151228T085259_T55HCU"]
+    # Remove problematic image
+    df = df[~df.id_GEE.isin(list_unvalid)]
+    print("nb pixels: ", df.shape[0])
+    print("After nb images: ", len(df.groupby('id_GEE')))
+    return df
 
 
 def create_training_evaluation_dataset(df):
@@ -95,9 +106,17 @@ def create_training_evaluation_dataset(df):
     Arguments:
         :param df: dataframe to split in training and evaluation dataset
     """
-    training = pd.DataFrame()
-    evaluation = pd.DataFrame()
-    print(len(df.groupby('id_GEE')))
+    training_cloud = pd.DataFrame()
+    training_not_cloud = pd.DataFrame()
+    evaluation_cloud = pd.DataFrame()
+    evaluation_not_cloud = pd.DataFrame()
+
+    nb_images = len(df.groupby('id_GEE'))
+    print("Nb images: ", nb_images)
+    
+    nb_pixel_per_image_training = 100000 // nb_images + 1
+    nb_pixel_per_image_evaluation = nb_pixel_per_image_training + 30000 // nb_images + 1
+
     for name, images in df.groupby('id_GEE'):
         # Select cloudy and non cloudy dataframe
         df_cloud = images[images.cloud]
@@ -107,13 +126,17 @@ def create_training_evaluation_dataset(df):
         df_cloud = shuffle(df_cloud)
         df_not_cloud = shuffle(df_not_cloud)
         
-        # Select the 1250 first pixels of training dataset
-        training = training.append(df_cloud.iloc[:1250])
-        training = training.append(df_not_cloud.iloc[:1250])
+        # Select the n first pixels for training dataset
+        training_cloud = training_cloud.append(df_cloud.iloc[:nb_pixel_per_image_training])
+        training_not_cloud = training_not_cloud.append(df_not_cloud.iloc[:nb_pixel_per_image_training])
 
-        # Select the first 375 pixels for evalutaion dataset
-        evaluation = evaluation.append(df_cloud.iloc[1250:1625])
-        evaluation = evaluation.append(df_not_cloud.iloc[1250:1625])
+        # Select the first n' pixels for evalutaion dataset
+        evaluation_cloud = evaluation_cloud.append(df_cloud.iloc[nb_pixel_per_image_training:nb_pixel_per_image_evaluation])
+        evaluation_not_cloud = evaluation_not_cloud.append(df_not_cloud.iloc[nb_pixel_per_image_training:nb_pixel_per_image_evaluation])
+
+    # Resize to 100 000 and 30 000 pixels in total
+    training = training_cloud[:100000].append(training_not_cloud[:100000])
+    evaluation = evaluation_cloud[:30000].append(evaluation_not_cloud[:30000])
 
     # Shuffle training and evaluation dataframe
     training = shuffle(training)
@@ -224,10 +247,9 @@ def createDataSet():
 
     # Create training and evaluation dataset
     training_df, evaluation_df = create_training_evaluation_dataset(df_total)
-    print("Nb pixel per image training: ", training_df.groupby(by="id_GEE").size())
 
     # Save both dataset to excel
     training_df.to_excel("training.xlsx")
     evaluation_df.to_excel("evaluation.xlsx")
 
-# createDataSet()
+createDataSet()

@@ -3,9 +3,9 @@ import sys
 currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
-from Methods_cloud_masking.perso_luigi_utils import getGeometryImage
 from Methods_cloud_masking.multitemporal_cloud_masking import CloudClusterScore
 from Methods_cloud_masking.perso_tree import getMaskTree1, getMaskTree2, getMaskTree3
+from Methods_cloud_masking.perso_luigi_utils import getGeometryImage
 import ee
 import pandas as pd
 from utils import startProgress, progress, endProgress
@@ -157,47 +157,59 @@ def apply_all_methods_save(filename):
         image = ee.Image(name)
         region_of_interest = getGeometryImage(image)
 
-        for method_number in range(1, 6):
-            method_name = "persistence"
-            print(" " * 5 + "- Method used: " + method_name + " " + str(method_number))
-            while True:
-                try:
-                    cloud_score_persistence = CloudClusterScore(image,
-                                                                region_of_interest,
-                                                                method_number=method_number,
-                                                                method_pred=method_name)[0]
-                    method_cour_name = method_name + str(method_number)
-                    new_col = newColumnsFromImage(df_pixels, cloud_score_persistence, False)
-                    df_not_done.loc[df_not_done.id_GEE == name, [method_cour_name]] = new_col
-                    break
-                except ee.ee_exception.EEException:
-                   print(" " * 10 + "Error GEE occurs")
+        for method_number in range(4, 6):
 
             method_name = "percentile"
+            method_cour_name = method_name + str(method_number)
+
+            stop = False
             print(" " * 5 + "- Method used: " + method_name + " " + str(method_number))
-            while True:
+            while not stop:
                 try:
                     cloud_score_persistence = CloudClusterScore(image,
                                                                 region_of_interest,
                                                                 method_number=method_number,
                                                                 method_pred=method_name)[0]
-                    method_cour_name = method_name + str(method_number)
                     new_col = newColumnsFromImage(df_pixels, cloud_score_persistence, False)
                     df_not_done.loc[df_not_done.id_GEE == name, [method_cour_name]] = new_col
-                    break
-                except ee.ee_exception.EEException:
-                    print(" " * 10 + "Error GEE occurs")
+                    stop = True
+                except ee.ee_exception.EEException as e:
+                    print(" " * 10 + "Error GEE occurs:", e)
+                    if str(e)[:18] == 'Dictionary.toArray':
+                        new_col = ["ERROR" for _ in range(df_pixels.shape[0])]
+                        df_not_done.loc[df_not_done.id_GEE == name, [method_cour_name]] = new_col
+                        stop = True
 
+            method_name = "persistence"
+            method_cour_name = method_name + str(method_number)
 
+            print(" " * 5 + "- Method used: " + method_name + " " + str(method_number))
+            stop = False
+            while not stop:
+                try:
+                    cloud_score_persistence = CloudClusterScore(image,
+                                                                region_of_interest,
+                                                                method_number=method_number,
+                                                                method_pred=method_name)[0]
+                    new_col = newColumnsFromImage(df_pixels, cloud_score_persistence, False)
+                    df_not_done.loc[df_not_done.id_GEE == name, [method_cour_name]] = new_col
+                    stop = True
+                except ee.ee_exception.EEException as e:
+                    print(" " * 10 + "Error GEE occurs:", e)
+                    if str(e)[:18] == 'Dictionary.toArray':
+                        new_col = ["ERROR" for _ in range(df_pixels.shape[0])]
+                        df_not_done.loc[df_not_done.id_GEE == name, [method_cour_name]] = new_col
+                        stop = True
+
+        
         print(" " * 5 + "- Method used: tree1")
         while True:
             try:
                 new_col = newColumnsFromImage(df_pixels, getMaskTree1(image), True)
                 df_not_done.loc[df_not_done.id_GEE == name, ["tree1"]] = new_col
                 break
-            except ee.ee_exception.EEException:
-                print(" " * 10 + "Error GEE occurs")
-
+            except ee.ee_exception.EEException as e:
+                print(" " * 10 + "Error GEE occurs:", e)
 
         print(" " * 5 + "- Method used: tree2")
         while True:
@@ -205,8 +217,8 @@ def apply_all_methods_save(filename):
                 new_col = newColumnsFromImage(df_pixels, getMaskTree2(image), True)
                 df_not_done.loc[df_not_done.id_GEE == name, ["tree2"]] = new_col
                 break
-            except ee.ee_exception.EEException:
-                print(" " * 10 + "Error GEE occurs")
+            except ee.ee_exception.EEException as e:
+                print(" " * 10 + "Error GEE occurs:", e)
         
         print(" " * 5 + "- Method used: tree3")
         while True:
@@ -214,8 +226,8 @@ def apply_all_methods_save(filename):
                 new_col = newColumnsFromImage(df_pixels, getMaskTree3(image), True)
                 df_not_done.loc[df_not_done.id_GEE == name, ["tree3"]] = new_col
                 break
-            except ee.ee_exception.EEException:
-                print(" " * 10 + "Error GEE occurs")
+            except ee.ee_exception.EEException as e:
+                print(" " * 10 + "Error GEE occurs:", e)
 
         print("Sauvegarde")
         df_total = df_already_done.append(df_not_done)
@@ -229,13 +241,35 @@ def apply_all_methods_save(filename):
 
         # Update progress bar
         # progress(_ * 100/80)
-        print("Image: {0}/{1} = {2} %".format(_, nb_group, _/nb_group*100))
+        print("Image: {0}/{1} = {2} %".format(_+1, nb_group, (_+1)/nb_group*100))
         print("*" * 50)
 
     # endProgress()
 
+def find_problematic_pictures(filename):
+    """
+    Display all the problematic pictures (cloudclustering not working)
+    Arguments:
+        :param filename: 
+    """
+    df = pd.read_excel(filename)
+    df = df[df.filter(regex='^(?!Unnamed)').columns]
+    nb_group = len(df.groupby("id_GEE"))
 
+    for i, (name, df_pixels) in enumerate(df.groupby("id_GEE")):
+        # Create GEE Image
+        image = ee.Image(name)
+        region_of_interest = getGeometryImage(image)
 
+        cloud_score_persistence = CloudClusterScore(image,
+                                                    region_of_interest,
+                                                    method_number=1,
+                                                    method_pred="persistence")[0]
+        try:
+            cloud_score_persistence.getInfo()
+        except ee.ee_exception.EEException:
+            print(name)
+        print("Image: {0}/{1} = {2} %".format(i+1, nb_group,(i+1)/nb_group*100))
 
 if __name__ == "__main__":
     ee.Initialize()

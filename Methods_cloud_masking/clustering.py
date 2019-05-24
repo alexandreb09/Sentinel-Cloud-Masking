@@ -1,6 +1,5 @@
 from Methods_cloud_masking import normalization
 from Methods_cloud_masking.perso_parameters import PARAMS_CLOUDCLUSTERSCORE_DEFAULT
-from Methods_cloud_masking.perso_luigi_utils import resizeRegion
 import ee
 
 BANDS_MODEL = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B9", "B10", "B11"]
@@ -35,44 +34,45 @@ def SelectClusters(image,
     multitemporal_score = None
     reflectance_score = None
 
-    while True:
+    for i in range(n_clusters):
+        img_diff_clus = img_joined.updateMask(result_clustering.eq(i)).select(bands_and_difference_bands)
+        clusteri = img_diff_clus.reduceRegion(ee.Reducer.mean(),
+                                            geometry=region_of_interest,
+                                            bestEffort=True,
+                                            scale=30,
+                                            tileScale=tileScale
+                                            )
+        
+        # clusteri = ee.Algorithms.If(ee.Algorithms.IsEqual(clusteri, None), 0, clusteri)
+        clusteri_diff = clusteri.toArray(bands_norm_difference)
+
+        print("i: ", i)
         try:
-            for i in range(n_clusters):
-                img_diff_clus = img_joined.updateMask(result_clustering.eq(i)).select(bands_and_difference_bands)
-                clusteri = img_diff_clus.reduceRegion(ee.Reducer.mean(),
-                                                    geometry=region_of_interest,
-                                                    bestEffort=True,
-                                                    scale=30,
-                                                    tileScale=tileScale
-                                                    )
-
-                clusteri_diff = clusteri.toArray(bands_norm_difference)
-                clusteri_refl = clusteri.toArray(bands_thresholds)
-                clusteri_refl_norm = clusteri_refl.multiply(clusteri_refl).reduce(ee.Reducer.mean(),
-                                                                                axes=[0]).sqrt().get([0])
-
-                clusteridiff_mean = clusteri_diff.reduce(ee.Reducer.mean(), axes=[0]).get([0])
-                clusteridiff_norm = clusteri_diff.multiply(clusteri_diff).reduce(ee.Reducer.mean(),
-                                                                                axes=[0]).sqrt().get([0])
-
-                multitemporal_score_clusteri = ee.Algorithms.If(clusteridiff_mean.gt(0),
-                                                                clusteridiff_norm,
-                                                                clusteridiff_norm.multiply(-1))
-
-                multitemporal_score_clusteri = result_clustering.eq(i).toFloat().multiply(ee.Number(multitemporal_score_clusteri))
-                reflectance_score_clusteri = result_clustering.eq(i).toFloat().multiply(ee.Number(clusteri_refl_norm))
-
-                if multitemporal_score is None:
-                    multitemporal_score = multitemporal_score_clusteri
-                    reflectance_score = reflectance_score_clusteri
-                else:
-                    multitemporal_score = multitemporal_score.add(multitemporal_score_clusteri)
-                    reflectance_score = reflectance_score.add(reflectance_score_clusteri)
-            break
+            a = clusteri_diff.getInfo()
         except ee.ee_exception.EEException:
-            print(" " * 15 + "Reduction image size")
-            new_coordinates = resizeRegion(region_of_interest.coordinates().getInfo())
-            region_of_interest = ee.Geometry.Polygon(new_coordinates)
+            print("clusteri_diff: ", clusteri_diff)
+
+        clusteri_refl = clusteri.toArray(bands_thresholds)
+        clusteri_refl_norm = clusteri_refl.multiply(clusteri_refl).reduce(ee.Reducer.mean(),
+                                                                        axes=[0]).sqrt().get([0])
+
+        clusteridiff_mean = clusteri_diff.reduce(ee.Reducer.mean(), axes=[0]).get([0])
+        clusteridiff_norm = clusteri_diff.multiply(clusteri_diff).reduce(ee.Reducer.mean(),
+                                                                        axes=[0]).sqrt().get([0])
+
+        multitemporal_score_clusteri = ee.Algorithms.If(clusteridiff_mean.gt(0),
+                                                        clusteridiff_norm,
+                                                        clusteridiff_norm.multiply(-1))
+
+        multitemporal_score_clusteri = result_clustering.eq(i).toFloat().multiply(ee.Number(multitemporal_score_clusteri))
+        reflectance_score_clusteri = result_clustering.eq(i).toFloat().multiply(ee.Number(clusteri_refl_norm))
+
+        if multitemporal_score is None:
+            multitemporal_score = multitemporal_score_clusteri
+            reflectance_score = reflectance_score_clusteri
+        else:
+            multitemporal_score = multitemporal_score.add(multitemporal_score_clusteri)
+            reflectance_score = reflectance_score.add(reflectance_score_clusteri)
 
     return multitemporal_score, reflectance_score
 

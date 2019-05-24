@@ -71,21 +71,21 @@ def getGeometryImage(image):
 
 
 # Minimize the dimension of the image
-def getBarycentre(ll):
-    centre = [0, 0]
-    for pt in ll:
-        centre[0] += pt[0]
-        centre[1] += pt[1]
-    return centre[0] / len(ll), centre[1] / len(ll)
+# def getBarycentre(ll):
+#     centre = [0, 0]
+#     for pt in ll:
+#         centre[0] += pt[0]
+#         centre[1] += pt[1]
+#     return centre[0] / len(ll), centre[1] / len(ll)
     
-def signof(x):
-    return (1, -1)[x < 0]
+# def signof(x):
+#     return (1, -1)[x < 0]
 
-def resizeRegion(list_points, alpha=1 / 1000):
-    bx, by = getBarycentre(list_points)
-    new_list = []
-    for pt in list_points:
-        pX = pt[0] + signof(bx - pt[0])* alpha
-        pY = pt[1] + signof(by - pt[1])* alpha
-        new_list.append([pX, pY])
-    return new_list
+# def resizeRegion(list_points, alpha=1 / 1000):
+#     bx, by = getBarycentre(list_points)
+#     new_list = []
+#     for pt in list_points:
+#         pX = pt[0] + signof(bx - pt[0])* alpha
+#         pY = pt[1] + signof(by - pt[1])* alpha
+#         new_list.append([pX, pY])
+#     return new_list
