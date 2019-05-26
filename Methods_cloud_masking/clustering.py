@@ -46,11 +46,11 @@ def SelectClusters(image,
         # clusteri = ee.Algorithms.If(ee.Algorithms.IsEqual(clusteri, None), 0, clusteri)
         clusteri_diff = clusteri.toArray(bands_norm_difference)
 
-        print("i: ", i)
-        try:
-            a = clusteri_diff.getInfo()
-        except ee.ee_exception.EEException:
-            print("clusteri_diff: ", clusteri_diff)
+        # print("i: ", i)
+        # try:
+        #     a = clusteri_diff.getInfo()
+        # except ee.ee_exception.EEException:
+        #     print("clusteri_diff: ", clusteri_diff)
 
         clusteri_refl = clusteri.toArray(bands_thresholds)
         clusteri_refl_norm = clusteri_refl.multiply(clusteri_refl).reduce(ee.Reducer.mean(),

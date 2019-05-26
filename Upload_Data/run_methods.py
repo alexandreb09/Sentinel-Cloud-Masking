@@ -113,7 +113,7 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
 #     return df
 
 
-def apply_all_methods_save(filename):
+def apply_all_methods_save(filename, sheet_name):
     """
     Arguments:
         :param filename: filename to process
@@ -122,7 +122,7 @@ def apply_all_methods_save(filename):
     # startProgress("Execution method")
 
     # get the number of group to process
-    df_total = pd.read_excel(filename)
+    df_total = pd.read_excel(filename, sheet_name="Training")
     df_total = df_total[df_total.filter(regex='^(?!Unnamed)').columns]
 
     nb_nan_values = df_total[df_total["percentile1"].isnull()].shape[0]
@@ -157,9 +157,9 @@ def apply_all_methods_save(filename):
         image = ee.Image(name)
         region_of_interest = getGeometryImage(image)
 
-        for method_number in range(4, 6):
+        for method_number in range(1, 6):
 
-            method_name = "percentile"
+            method_name = "persistence"
             method_cour_name = method_name + str(method_number)
 
             stop = False
@@ -180,7 +180,7 @@ def apply_all_methods_save(filename):
                         df_not_done.loc[df_not_done.id_GEE == name, [method_cour_name]] = new_col
                         stop = True
 
-            method_name = "persistence"
+            method_name = "percentile"
             method_cour_name = method_name + str(method_number)
 
             print(" " * 5 + "- Method used: " + method_name + " " + str(method_number))
@@ -234,7 +234,7 @@ def apply_all_methods_save(filename):
 
         # Save - export
         df_total = df_total[df_total.filter(regex='^(?!Unnamed)').columns]
-        df_total.to_excel(filename, index=False)
+        df_total.to_excel(filename, sheet_name="Training", index=False)
         # Read again (update df: restart from last row)
         # df_full = pd.read_excel(filename)
         # df_full = df_full[df_full.filter(regex='^(?!Unnamed)').columns]
@@ -277,5 +277,6 @@ if __name__ == "__main__":
     # print(df_training)
     # df_res = apply_method_1_to_5(df_training, method_name)
 
-    file_name = "Data/training.xlsx"
-    apply_all_methods_save(file_name)
+    file_name = "Data/results.xlsx"
+    sheet_name = "Training"
+    apply_all_methods_save(file_name, sheet_name)

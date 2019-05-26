@@ -98,3 +98,17 @@ def splitH5File(filename):
                 elif key in key_copy_part:
                     f_new.create_dataset(key, data=f_old[key][nb_rows//2:])
 
+
+def export_training_evaluation_df_to_excel(training_df, evaluation_df):
+    """
+    Export the dataframe to excel in two sheets
+    Arguments:
+        :param training_df: 
+        :param evaluation_df: 
+    """
+    import xlsxwriter
+    writer = pd.ExcelWriter("Data/results.xlsx", engine = 'xlsxwriter')
+    training_df.to_excel(writer, sheet_name="Training", index=False)
+    evaluation_df.to_excel(writer, sheet_name="Evaluation", index=False)
+    writer.save()
+    writer.close()

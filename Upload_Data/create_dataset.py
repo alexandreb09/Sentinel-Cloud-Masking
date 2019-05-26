@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.utils import shuffle
 import h5py
-from utils import progress, startProgress, endProgress, getDates
+from utils import progress, startProgress, endProgress, getDates, export_training_evaluation_df_to_excel
 import ee
 
 def getDataFromH5File(filename, number_rows_kept=None):
@@ -46,25 +46,48 @@ def getDataFromH5File(filename, number_rows_kept=None):
 
 
 
-def filter_nb_pixels_per_image(df, n=1781):
-    """ Remove all the group of image having less than
+def filter_nb_pixels_per_image(df):
+    """ 
+    Remove all the group of image having less than
             - n cloud pixels 
             - n non cloud pixels
     Arguments:
         :param df: dataframe to process
-        :param n=1625: nb_min of cloud pixels and non cloud pixel per image
     """
     list_to_keep = []
+    N_TRAINING = 100000
+    N_EVAL     = 30000
     
-    for name, df_images in df.groupby('id_GEE'):
-        nb_pixel_cloud = len(df_images[df_images.cloud == True])
-        nb_pixel_not_cloud = len(df_images[df_images.cloud == True])
-        # print(str(nb_pixel_cloud) + " + " + str(nb_pixel_not_cloud) + " = " + str(len(df_images.id_GEE)))
-        if nb_pixel_cloud > n or nb_pixel_not_cloud > n:
-            list_to_keep.append(name)
+    # While each image hasn't the required number of pixel:
+    stop = False
+    while not stop:
+        # Groupd the dataframe by imahe
+        df_grouped = df.groupby('id_GEE')
+        nb_images = len(df_grouped)
+        n_tr = N_TRAINING//len(df_grouped)+1
+        n_ev = N_EVAL//len(df_grouped)+1
+        # Total number of cloudy and non cloudy pixels an must have
+        n = n_tr + n_ev
 
-    df = df[df.id_GEE.isin(list_to_keep)]
+        # For each image
+        for name, df_images in df_grouped:
+            # Compute the number of cloudy / non cloudy pixels
+            nb_pixel_cloud = len(df_images[df_images.cloud == True])
+            nb_pixel_not_cloud = len(df_images[df_images.cloud == True])
+            # If thoses numbers greater than n
+            if nb_pixel_cloud > n or nb_pixel_not_cloud > n:
+                # The image is kept
+                list_to_keep.append(name)
 
+        # Reshape the dataframe with only the images to keep
+        df = df[df.id_GEE.isin(list_to_keep)]
+        # If the number of images hasn't changed
+        if nb_images == len(df.groupby('id_GEE')):
+            # exit the loop
+            stop = True
+
+    # print("FINAL Nb images: ", len(df_grouped))
+    # print("FINAL Nb pixel per image expected: ", n)
     return df
 
 
@@ -78,21 +101,20 @@ def total_dataframe_filtered(filename, filename2):
     df = getDataFromH5File(filename)
     df2 = getDataFromH5File(filename2)
 
-    df = filter_nb_pixels_per_image(df)
-    df2 = filter_nb_pixels_per_image(df2)
-
     df = df.append(df2)
 
-    print("Before nb images: ", len(df.groupby('id_GEE')))
-    list_unvalid = ["COPERNICUS/S2/20151206T042142_20151206T042447_T46RGV",
-                "COPERNICUS/S2/20151226T080933_20151226T112710_T36LXM",
-                "COPERNICUS/S2/20151228T002843_20151228T085259_T54HYD",
-                "COPERNICUS/S2/20151228T002843_20151228T085259_T55HCA",
-                "COPERNICUS/S2/20151228T002843_20151228T085259_T55HCU"]
+    df = filter_nb_pixels_per_image(df)
+
+    # print("Before nb images: ", len(df.groupby('id_GEE')))
+    # list_unvalid = ["COPERNICUS/S2/20151206T042142_20151206T042447_T46RGV",
+    #             "COPERNICUS/S2/20151226T080933_20151226T112710_T36LXM",
+    #             "COPERNICUS/S2/20151228T002843_20151228T085259_T54HYD",
+    #             "COPERNICUS/S2/20151228T002843_20151228T085259_T55HCA",
+    #             "COPERNICUS/S2/20151228T002843_20151228T085259_T55HCU"]
     # Remove problematic image
-    df = df[~df.id_GEE.isin(list_unvalid)]
-    print("nb pixels: ", df.shape[0])
-    print("After nb images: ", len(df.groupby('id_GEE')))
+    # df = df[~df.id_GEE.isin(list_unvalid)]
+    # print("nb pixels: ", df.shape[0])
+    # print("After nb images: ", len(df.groupby('id_GEE')))
     return df
 
 
@@ -145,7 +167,7 @@ def create_training_evaluation_dataset(df):
     return training, evaluation
 
 
-def convert_Granule_Product_ID_To_GEEID(filename):
+def clean_H5_Files(filename):
     """
     - Read a file
     - Transform granule_id + product_id en GEE_id
@@ -219,7 +241,8 @@ def convert_Granule_Product_ID_To_GEEID(filename):
         # End progress bar
         endProgress()
 
-    with h5py.File("new_file.h5", "w") as f:
+    new_filename = filename[:-3] + "_cleaned" + filename[-3:]
+    with h5py.File(new_filename, "w") as f:
         f.create_dataset("latitude", data=df.latitude.values)
         f.create_dataset("longitude", data=df.longitude.values)
         f.create_dataset("id_GEE", data=np.string_(list_ID))
@@ -230,8 +253,14 @@ def convert_Granule_Product_ID_To_GEEID(filename):
 
     print("New file created !")
 
+def add_empty_methods_columns(df):
+    list_col = ["tree1", "tree2", "tree3", "percentile1", "percentile2","percentile3","percentile4","percentile5",
+                "persistence1", "persistence2", "persistence3", "persistence4", "persistence5", ]
+    for col_name in list_col:
+        df[col_name] = ""
+    return df
 
-    
+
 def createDataSet():
     """
     Like entry function: brief summary to sample the data.
@@ -248,8 +277,11 @@ def createDataSet():
     # Create training and evaluation dataset
     training_df, evaluation_df = create_training_evaluation_dataset(df_total)
 
+    training_df = add_empty_methods_columns(training_df)
+    evaluation_df = add_empty_methods_columns(evaluation_df)
+
+    print("Nb pixel per image: ", training_df.groupby(by="id_GEE").size())
     # Save both dataset to excel
-    training_df.to_excel("training.xlsx")
-    evaluation_df.to_excel("evaluation.xlsx")
+    export_training_evaluation_df_to_excel(training_df, evaluation_df)
 
 createDataSet()

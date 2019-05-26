@@ -583,17 +583,14 @@ def CloudClusterScore(img, region_of_interest,
         params = dict(PARAMS_CLOUDCLUSTERSCORE_DEFAULT)
         params.update(temp)
 
-    image_with_lags = SelectImagesTraining(method_number, img, region_of_interest,
-                                            number_of_images, number_preselect,
-                                            threshold_cc)    
-    cloudBitMask = 1 << 10
-    cirrusBitMask = 1 << 11
 
+    # cloudBitMask = 1 << 10
+    # cirrusBitMask = 1 << 11
     # clouds_original = img.select('QA60').bitwiseAnd(int('1010000000000000', 2)).gt(0)
-    clouds_original = img.select('QA60').bitwiseAnd(cloudBitMask).eq(0)
-    clouds_original = img.select('QA60').bitwiseAnd(cirrusBitMask).eq(0)
-    clouds = clouds_original.reduceNeighborhood(ee.Reducer.max(),
-                                                ee.Kernel.circle(radius=3))
+    # clouds_original = img.select('QA60').bitwiseAnd(cloudBitMask).eq(0)
+    # clouds_original = img.select('QA60').bitwiseAnd(cirrusBitMask).eq(0)
+    # clouds = clouds_original.reduceNeighborhood(ee.Reducer.max(),
+    #                                             ee.Kernel.circle(radius=3))
 
     # reflectance_bands_landsat8 = ["B%d" % i for i in range(1, 12)]
     reflectance_bands_sentinel2 = SENTINEL2_BANDNAMES
@@ -601,6 +598,9 @@ def CloudClusterScore(img, region_of_interest,
     # forecast_bands_landsat8 = [i + "_forecast" for i in reflectance_bands_sentinel2]
     forecast_bands_sentinel2 = [i + "_forecast" for i in reflectance_bands_sentinel2]
 
+    image_with_lags = SelectImagesTraining(method_number, img, region_of_interest,
+                                    number_of_images, number_preselect,
+                                    threshold_cc)  
     if method_pred == "persistence":
         reflectance_bands_sentinel2_lag_1 = [i + "_lag_1" for i in reflectance_bands_sentinel2]
         img_forecast = image_with_lags.select(reflectance_bands_sentinel2_lag_1, forecast_bands_sentinel2)
@@ -612,31 +612,31 @@ def CloudClusterScore(img, region_of_interest,
         img_forecast = img_percentile.select(reflectance_bands_sentinel2_perc50,
                                         forecast_bands_sentinel2)
 
-    elif method_pred == "linear":
-        modelo = ModelCloudMasking(image_with_lags, reflectance_bands_sentinel2,
-                                   clouds, number_of_images, region_of_interest)
-        if params["trainlocal"]:
-            modelo.TrainLinearLocal(sampling_factor=params["sampling_factor"],
-                                    lmbda=params["lmbda"], with_task=params["with_task"])
-        else:
-            modelo.TrainLinearServer(sampling_factor=params["sampling_factor"],
-                                     lmbda=params["lmbda"])
+    # elif method_pred == "linear":
+    #     modelo = ModelCloudMasking(image_with_lags, reflectance_bands_sentinel2,
+    #                                clouds, number_of_images, region_of_interest)
+    #     if params["trainlocal"]:
+    #         modelo.TrainLinearLocal(sampling_factor=params["sampling_factor"],
+    #                                 lmbda=params["lmbda"], with_task=params["with_task"])
+    #     else:
+    #         modelo.TrainLinearServer(sampling_factor=params["sampling_factor"],
+    #                                  lmbda=params["lmbda"])
 
-        img_forecast = modelo.PredictLinear()
+    #     img_forecast = modelo.PredictLinear()
 
-    elif method_pred == "kernel":
-        modelo = ModelCloudMasking(image_with_lags, reflectance_bands_sentinel2,
-                                   clouds, number_of_images, region_of_interest)
-        if params["trainlocal"]:
-            modelo.TrainRBFKernelLocal(sampling_factor=params["sampling_factor"],
-                                       lmbda=params["lmbda"], gamma=params["gamma"],
-                                       with_task=params["with_task"],
-                                       with_cross_validation=params["with_cross_validation"])
-        else:
-            modelo.TrainRBFKernelServer(sampling_factor=params["sampling_factor"],
-                                        lmbda=params["lmbda"], gamma=params["gamma"])
+    # elif method_pred == "kernel":
+    #     modelo = ModelCloudMasking(image_with_lags, reflectance_bands_sentinel2,
+    #                                clouds, number_of_images, region_of_interest)
+    #     if params["trainlocal"]:
+    #         modelo.TrainRBFKernelLocal(sampling_factor=params["sampling_factor"],
+    #                                    lmbda=params["lmbda"], gamma=params["gamma"],
+    #                                    with_task=params["with_task"],
+    #                                    with_cross_validation=params["with_cross_validation"])
+    #     else:
+    #         modelo.TrainRBFKernelServer(sampling_factor=params["sampling_factor"],
+    #                                     lmbda=params["lmbda"], gamma=params["gamma"])
 
-        img_forecast = modelo.PredictRBFKernel()
+    #     img_forecast = modelo.PredictRBFKernel()
 
     else:
         raise NotImplementedError("method %s is not implemented" % method_pred)

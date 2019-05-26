@@ -76,11 +76,10 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
 
     # Get collection id
 
-
     sentinel_info = sentinel_img.getInfo()                                  # Sentinel infos
     sentinel_full_id = sentinel_info['id']                                  # full image ID
     image_index = sentinel_info['properties']['system:index']               # Imafe index
-    sentinel_collection = sentinel_full_id.replace("/" + image_index, "")  # Sentinel collection (base for background) 
+    sentinel_collection = sentinel_full_id.replace("/" + image_index, "")   # Sentinel collection (base for background) 
 
     MGRS_TILE = sentinel_info['properties']['MGRS_TILE']                    # Tile the image analyzed
 
@@ -124,6 +123,13 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
         
     # Compute CC for the RoI
     # imgColl = imgColl.map(lambda x: ComputeCloudCoverGeomSentinel(x, region_of_interest))
+    
+    # def getId(item):
+    #     return ee.List(ee.Image(item).id())
+    # Extract the ID of each image object.
+    # id_list = imgColl.toList(imgColl.size()).map(getId)
+    # print('Id_list: ', [img for img in id_list.getInfo()])
+    # print('Nb Images background: ', len(id_list.getInfo()))
 
     return imgColl
 
