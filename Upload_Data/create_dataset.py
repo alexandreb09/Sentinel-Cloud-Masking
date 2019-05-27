@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.utils import shuffle
 import h5py
-from utils import progress, startProgress, endProgress, getDates, export_training_evaluation_df_to_excel
+from utils import progress, startProgress, endProgress, getDates, export_df_train_eval_to_excel
 import ee
 
 def getDataFromH5File(filename, number_rows_kept=None):
@@ -160,11 +160,11 @@ def create_training_evaluation_dataset(df):
     training = training_cloud[:100000].append(training_not_cloud[:100000])
     evaluation = evaluation_cloud[:30000].append(evaluation_not_cloud[:30000])
 
-    # Shuffle training and evaluation dataframe
-    training = shuffle(training)
-    evaluation = shuffle(evaluation)
-
-    return training, evaluation
+    training["index"] = range(training.shape[0])
+    evaluation["index"] = range(evaluation.shape[0])
+    
+    return training[["index", "id_GEE", "longitude", "latitude", "cloud"]], \
+           evaluation[["index", "id_GEE", "longitude", "latitude", "cloud"]]
 
 
 def clean_H5_Files(filename):
@@ -282,6 +282,6 @@ def createDataSet():
 
     print("Nb pixel per image: ", training_df.groupby(by="id_GEE").size())
     # Save both dataset to excel
-    export_training_evaluation_df_to_excel(training_df, evaluation_df)
+    export_df_train_eval_to_excel(training_df,evaluation_df)
 
 createDataSet()

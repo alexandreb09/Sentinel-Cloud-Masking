@@ -30,7 +30,7 @@ def add_evi_bands(image):
 
 
 def rename_bands_ft(image):
-    # Rename the bands: 4 -> NDVI ; 5 -> EVI    
+    # Rename the bands: 4 -> NDVI ; 5 -> EVI
     old_bands = image.bandNames()
     new_bands = old_bands.set(4, 'NDVI').set(5, "EVI")
     return image.select(old_bands, new_bands)
@@ -39,9 +39,9 @@ def ComputeCloudCoverGeomSentinel(img, region_of_interest):
     """Compute mean cloud cover and add it as property to the image"""
     # Undefined for sentinel !
     # clouds = ee.Algorithms.Landsat.simpleCloudScore(img).gte(50)
-    
+
     # clouds= img
-    
+
     # clouds_original = image_predict_clouds.select("fmask").eq(2)
     # clouds_original = clouds_original.where(image_predict_clouds.select("fmask").eq(4),2)
 
@@ -56,6 +56,10 @@ def ComputeCloudCoverGeomSentinel(img, region_of_interest):
     # numerito = ee.Number(dictio.get("CLOUDY_PIXEL_PERCENTAGE")) #.multiply(100)
     img = img.set("CC", img.get('CLOUDY_PIXEL_PERCENTAGE'))
     return img
+
+def filter_partial_tiles(images, image):
+    nb_pixels = ee.Number(ee.Image(image).get("system:asset_size")).multiply(0.9)
+    return ee.ImageCollection(images).filter(ee.Filter.gt('system:asset_size', nb_pixels))
 
 
 
@@ -79,7 +83,7 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
     sentinel_info = sentinel_img.getInfo()                                  # Sentinel infos
     sentinel_full_id = sentinel_info['id']                                  # full image ID
     image_index = sentinel_info['properties']['system:index']               # Imafe index
-    sentinel_collection = sentinel_full_id.replace("/" + image_index, "")   # Sentinel collection (base for background) 
+    sentinel_collection = sentinel_full_id.replace("/" + image_index, "")   # Sentinel collection (base for background)
 
     MGRS_TILE = sentinel_info['properties']['MGRS_TILE']                    # Tile the image analyzed
 
@@ -93,6 +97,8 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
         sentinel_collection = ee.ImageCollection(sentinel_collection) \
             .filterBounds(region_of_interest) \
             .filter(ee.Filter.eq("MGRS_TILE", MGRS_TILE))
+
+    sentinel_collection = filter_partial_tiles(sentinel_collection, sentinel_img)
 
     # Inclusion of current image in background
     if not include_img:
@@ -119,11 +125,11 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
 
     imgColl = imgColl.map(_count_valid).sort("valids").limit(number_of_images)
     # .filter(ee.Filter.greaterThanOrEquals('valids', .5))
-    
-        
+
+
     # Compute CC for the RoI
     # imgColl = imgColl.map(lambda x: ComputeCloudCoverGeomSentinel(x, region_of_interest))
-    
+
     # def getId(item):
     #     return ee.List(ee.Image(item).id())
     # Extract the ID of each image object.
@@ -145,7 +151,7 @@ def PredictPercentile(method_number, img, region_of_interest, number_of_images,
         :param number_of_images:
         :param number_preselect: 
         :param threshold_cc: 
-    """                   
+    """
     imgColl = PreviousImagesWithCCSentinel(method_number, img, number_of_images,
                                             threshold_cc, number_preselect,
                                             region_of_interest, include_img=False,

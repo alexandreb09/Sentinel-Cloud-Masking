@@ -5,13 +5,13 @@
 import ee
 from datetime import datetime
 from IPython.display import Image, display, HTML
-from ee_ipl_uv_perso import multitemporal_cloud_masking
-from ee_ipl_uv_perso import download
-from ee_ipl_uv_perso import perso
-from ee_ipl_uv_perso import perso_display
-from ee_ipl_uv_perso import perso_tree
-from ee_ipl_uv_perso.perso_luigi_utils import cleanScreen, getGeometryImage
-from ee_ipl_uv_perso.perso_parameters import GEOMETRY_PER_IMAGE, PARAMS_SELECTBACKGROUND_DEFAULT, \
+from Methods_cloud_masking import multitemporal_cloud_masking
+from Methods_cloud_masking import download
+from Methods_cloud_masking import perso
+from Methods_cloud_masking import perso_display
+from Methods_cloud_masking import perso_tree
+from Methods_cloud_masking.perso_luigi_utils import cleanScreen, getGeometryImage
+from Methods_cloud_masking.perso_parameters import GEOMETRY_PER_IMAGE, PARAMS_SELECTBACKGROUND_DEFAULT, \
                                             IMAGE_NAMES, RED, GREEN, BLUE, IMAGE_DIM
 import os
 import requests
@@ -27,14 +27,16 @@ ee.Initialize()
 
 # Image Number analyzed
 image_number = 1
-method = "percentile"
+method = "persistence"
 
 
 # Select image to remove clouds
-image_predict_clouds = ee.Image(IMAGE_NAMES.get(image_number))
+# image_predict_clouds = ee.Image(IMAGE_NAMES.get(image_number))
+image_predict_clouds = ee.Image("COPERNICUS/S2/20151206T042142_20151206T042447_T46RGV")
+# image_predict_clouds = ee.Image("COPERNICUS/S2/20160205T103556_20160205T174515_T32TLR")
 
 # Define area of interest
-region_of_interest = ee.Geometry.Polygon(GEOMETRY_PER_IMAGE.get(image_number))
+# region_of_interest = ee.Geometry.Polygon(GEOMETRY_PER_IMAGE.get(image_number))
 region_of_interest = getGeometryImage(image_predict_clouds)
 
 # Get image date
@@ -80,6 +82,7 @@ def viz_cloudscore_mask(cloudscoremask):
 ##############################
 
 for i in range(1, 6):
+    print("Method used : {0}_{1}".format(method, i))
     cloud_score_persistence, pred_persistence = multitemporal_cloud_masking. \
         CloudClusterScore(image_predict_clouds,
                           region_of_interest,

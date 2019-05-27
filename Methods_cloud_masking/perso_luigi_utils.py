@@ -89,3 +89,16 @@ def getGeometryImage(image):
 #         pY = pt[1] + signof(by - pt[1])* alpha
 #         new_list.append([pX, pY])
 #     return new_list
+
+def getIdImageInImageCollection(imgColl):
+    """
+    Get the id of all images in the image Collection
+        :param imgColl: ee.ImageCollection to iterrate
+        :return: python list of all the image ids
+    """
+    list_images_id = ee.List([])
+    def getListId(item, list_images_id):
+        return ee.List(list_images_id).add(ee.Image(item).id())
+    
+    id_list = imgColl.iterate(getListId, list_images_id)
+    return id_list.getInfo()

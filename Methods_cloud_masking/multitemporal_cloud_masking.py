@@ -403,7 +403,7 @@ def ComputeCloudCoverGeom(img, region_of_interest):
     # Undefined for sentinel !
     clouds = ee.Algorithms.Landsat.simpleCloudScore(img).gte(50)
     # clouds= img
-    
+
     # clouds_original = image_predict_clouds.select("fmask").eq(2)
     # clouds_original = clouds_original.where(image_predict_clouds.select("fmask").eq(4),2)
 
@@ -508,7 +508,7 @@ def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
         :param threshold_cc:
         :return:
         :rtype ee.Image
-    """                    
+    """
 
     band_names = SENTINEL2_BANDNAMES
 
@@ -520,9 +520,8 @@ def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
                                             region_of_interest)
 
     # print("Nb previous images (imageCollection): ", imgColl.size().getInfo())
-    
-    size_img_coll = ee.Number(imgColl.size())
 
+    size_img_coll = ee.Number(imgColl.size())
     offset = ee.Number(0).max(size_img_coll.subtract(number_of_images))
     imagenes_training = imgColl.toList(count=number_of_images, offset=offset)
 
@@ -531,12 +530,12 @@ def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
     for lag in range(1, number_of_images + 1):
         image_add = ee.Image(imagenes_training.get(number_of_images - lag))
         new_band_names = time_series_operations.GenerateBandNames(band_names, "_lag_" + str(lag))
-        
+
         image_add = image_add.select(band_names, new_band_names)
         sentinel_img = sentinel_img.addBands(image_add)
         sentinel_img = sentinel_img.set("system:time_start_lag_" + str(lag), image_add.get("system:time_start"))
         sentinel_img = sentinel_img.set("CC_lag_" + str(lag), image_add.get("CC"))
-        
+
     return sentinel_img
 
 """
@@ -569,7 +568,7 @@ def CloudClusterScore(img, region_of_interest,
         :return:  cloud mask (2: cloud,1: shadow, 0: clear)
     """
 
-    
+
     # print("_" * 60 + "\n")
     # print(" " * 5 + "- Clustering method used: " + method_pred)
     # print(" " * 5 + "- Method used: " + method_pred + " " + str(method_number))
@@ -600,7 +599,9 @@ def CloudClusterScore(img, region_of_interest,
 
     image_with_lags = SelectImagesTraining(method_number, img, region_of_interest,
                                     number_of_images, number_preselect,
-                                    threshold_cc)  
+                                    threshold_cc)
+
+
     if method_pred == "persistence":
         reflectance_bands_sentinel2_lag_1 = [i + "_lag_1" for i in reflectance_bands_sentinel2]
         img_forecast = image_with_lags.select(reflectance_bands_sentinel2_lag_1, forecast_bands_sentinel2)
@@ -612,31 +613,31 @@ def CloudClusterScore(img, region_of_interest,
         img_forecast = img_percentile.select(reflectance_bands_sentinel2_perc50,
                                         forecast_bands_sentinel2)
 
-    # elif method_pred == "linear":
-    #     modelo = ModelCloudMasking(image_with_lags, reflectance_bands_sentinel2,
-    #                                clouds, number_of_images, region_of_interest)
-    #     if params["trainlocal"]:
-    #         modelo.TrainLinearLocal(sampling_factor=params["sampling_factor"],
-    #                                 lmbda=params["lmbda"], with_task=params["with_task"])
-    #     else:
-    #         modelo.TrainLinearServer(sampling_factor=params["sampling_factor"],
-    #                                  lmbda=params["lmbda"])
+    elif method_pred == "linear":
+        modelo = ModelCloudMasking(image_with_lags, reflectance_bands_sentinel2,
+                                   clouds, number_of_images, region_of_interest)
+        if params["trainlocal"]:
+            modelo.TrainLinearLocal(sampling_factor=params["sampling_factor"],
+                                    lmbda=params["lmbda"], with_task=params["with_task"])
+        else:
+            modelo.TrainLinearServer(sampling_factor=params["sampling_factor"],
+                                     lmbda=params["lmbda"])
 
-    #     img_forecast = modelo.PredictLinear()
+        img_forecast = modelo.PredictLinear()
 
-    # elif method_pred == "kernel":
-    #     modelo = ModelCloudMasking(image_with_lags, reflectance_bands_sentinel2,
-    #                                clouds, number_of_images, region_of_interest)
-    #     if params["trainlocal"]:
-    #         modelo.TrainRBFKernelLocal(sampling_factor=params["sampling_factor"],
-    #                                    lmbda=params["lmbda"], gamma=params["gamma"],
-    #                                    with_task=params["with_task"],
-    #                                    with_cross_validation=params["with_cross_validation"])
-    #     else:
-    #         modelo.TrainRBFKernelServer(sampling_factor=params["sampling_factor"],
-    #                                     lmbda=params["lmbda"], gamma=params["gamma"])
+    elif method_pred == "kernel":
+        modelo = ModelCloudMasking(image_with_lags, reflectance_bands_sentinel2,
+                                   clouds, number_of_images, region_of_interest)
+        if params["trainlocal"]:
+            modelo.TrainRBFKernelLocal(sampling_factor=params["sampling_factor"],
+                                       lmbda=params["lmbda"], gamma=params["gamma"],
+                                       with_task=params["with_task"],
+                                       with_cross_validation=params["with_cross_validation"])
+        else:
+            modelo.TrainRBFKernelServer(sampling_factor=params["sampling_factor"],
+                                        lmbda=params["lmbda"], gamma=params["gamma"])
 
-    #     img_forecast = modelo.PredictRBFKernel()
+        img_forecast = modelo.PredictRBFKernel()
 
     else:
         raise NotImplementedError("method %s is not implemented" % method_pred)

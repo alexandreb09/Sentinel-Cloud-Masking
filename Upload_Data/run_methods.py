@@ -1,15 +1,15 @@
 import os
 import sys
+import ee
+import pandas as pd
+import numpy as np
 currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 from Methods_cloud_masking.multitemporal_cloud_masking import CloudClusterScore
 from Methods_cloud_masking.perso_tree import getMaskTree1, getMaskTree2, getMaskTree3
 from Methods_cloud_masking.perso_luigi_utils import getGeometryImage
-import ee
-import pandas as pd
-from utils import startProgress, progress, endProgress
-
+from Upload_Data.utils import startProgress, progress, endProgress, export_df_to_excel
 
 
 def newColumnsFromImage(df, mask_prev, isTreeMethod):
@@ -24,14 +24,23 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
     if isTreeMethod:
         key = "constant"
 
-    coordinates = df[["longitude", "latitude"]].values.tolist()
+    # Get coordinates
+    coordinates = df[["index", "longitude", "latitude"]].values.tolist()
 
     # GEE array of coordinate
     array_coordinate_GEE = ee.List(coordinates)
 
-    def get_pixel_result(coordinates):
-        point = ee.Geometry.Point(coordinates)
-        return mask_prev.reduceRegion(ee.Reducer.first(), point, 20).get(key)
+    # Row is compose by :
+    def get_pixel_result(row):
+        """
+        Arguments:
+            :param row: ee.List([id, long, lat])
+            :return:    ee.List([id, res])
+        """
+        row = ee.List(row)
+        point = ee.Geometry.Point(row.slice(0, 2))
+        return row.slice(2, 3).add(mask_prev.reduceRegion(ee.Reducer.first(), point, 20)
+                              .get(key))
 
     # GEE object : list of prediction for each pixel (1 x nb_pixels)
     new_col = array_coordinate_GEE.map(get_pixel_result)
@@ -86,16 +95,16 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
 #                                 region_of_interest,
 #                                 method_pred="percentile")[0]
 #             method_cour_name = method_name + "_" + str(i)
-#             df.loc[df.id_GEE == name, method_cour_name] = newColumnsFromImage(
-#                 df_pixels, cloud_score_persistence, False)
+#             df.loc[df.id_GEE == name, method_cour_name] =
+#                       newColumnsFromImage(df_pixels, cloud_score_persistence,False)
 
 #         for i in range(1, 6):
 #             cloud_score_persistence = CloudClusterScore(image,
 #                                                         region_of_interest,
 #                                                         method_pred="persistence")[0]
 #             method_cour_name = method_name + "_" + str(i)
-#             df.loc[df.id_GEE == name, method_cour_name] = newColumnsFromImage(
-#                 df_pixels, cloud_score_persistence, False)
+#             df.loc[df.id_GEE == name, method_cour_name] =
+#              newColumnsFromImage(df_pixels, cloud_score_persistence, False)
 
 #         df.loc[df.id_GEE == name, "tree1"] = newColumnsFromImage(
 #             df_pixels, getMaskTree1(image), True)
@@ -118,69 +127,40 @@ def apply_all_methods_save(filename, sheet_name):
     Arguments:
         :param filename: filename to process
     """
-    # progress bar
-    # startProgress("Execution method")
-
-    # get the number of group to process
+    #  Read the excel file
     df_total = pd.read_excel(filename, sheet_name="Training")
-    df_total = df_total[df_total.filter(regex='^(?!Unnamed)').columns]
 
-    nb_nan_values = df_total[df_total["percentile1"].isnull()].shape[0]
+    # Boolean vector of image to process
+    boolean_vector_todo = df_total["percentile1"].isnull()
 
-    # print("nb nan values: ", nb_nan_values)
-    # print("nb group: ", nb_group)
-    if nb_nan_values > 0:
-        nb_group = len(df_total.groupby("id_GEE"))
+    # Split total dataframe en already done and todo
+    df_todo = df_total[boolean_vector_todo].sort_values("id_GEE")
 
-    print("Nb images to process:", nb_group)
 
-    image_already_done = len(df_total[~df_total["percentile1"].isnull()].groupby(by="id_GEE"))
+    # Nb images totals
+    nb_images_total = len(df_total["id_GEE"].unique)
 
-    # for i, (name, df_pixels) in enumerate(df_part.groupby("id_GEE")):
-    for _ in range(image_already_done, nb_group+1):
-        # Ignore "unnamed" columns
-        # df_total = df_total[df_total.filter(regex='^(?!Unnamed)').columns]
+    # for _ in range(image_already_done, nb_group + 1):
+    for i, (name, df_pixels) in enumerate(df_todo.groupby("id_GEE")):
 
-        boolean_vector_done = ~df_total["percentile1"].isnull()
+        # Split total dataframe en already done and todo
+        df_todo = df_total[boolean_vector_todo].sort_values("id_GEE")
 
-        df_already_done = df_total[boolean_vector_done]
-        df_not_done = df_total[~boolean_vector_done].sort_values(by="id_GEE")
+        nb_pixels_todo = df_done.shape[0]
+        nb_pixels_done = df_todo.shape[0]
+        nb_image_done = len(df_done["id_GEE"].unique())
+        nb_image_todo = len(df_todo["id_GEE"].unique())
 
-        print("Df done: ", df_already_done.shape)
-        print("Df todo: ", df_not_done.shape)
-
-        name, df_pixels = list(df_not_done.groupby("id_GEE"))[0]
-        print(name)
-        print(df_pixels.shape)
-
-        # Create GEE Image
+        print("Image name: {0}".format(name))
+        print("Nb images done: %2d e.g. %5d pixels" % (nb_image_done, nb_pixels_done))
+        print("Nb images todo: %2d e.g. %5d pixels" % (nb_image_todo, nb_pixels_todo))
+        print("Progression: %2.2f %%" % (i/nb_images_total))
+        # Create GEE Image - ROI
         image = ee.Image(name)
         region_of_interest = getGeometryImage(image)
 
-        for method_number in range(1, 6):
-
-            method_name = "persistence"
-            method_cour_name = method_name + str(method_number)
-
-            stop = False
-            print(" " * 5 + "- Method used: " + method_name + " " + str(method_number))
-            while not stop:
-                try:
-                    cloud_score_persistence = CloudClusterScore(image,
-                                                                region_of_interest,
-                                                                method_number=method_number,
-                                                                method_pred=method_name)[0]
-                    new_col = newColumnsFromImage(df_pixels, cloud_score_persistence, False)
-                    df_not_done.loc[df_not_done.id_GEE == name, [method_cour_name]] = new_col
-                    stop = True
-                except ee.ee_exception.EEException as e:
-                    print(" " * 10 + "Error GEE occurs:", e)
-                    if str(e)[:18] == 'Dictionary.toArray':
-                        new_col = ["ERROR" for _ in range(df_pixels.shape[0])]
-                        df_not_done.loc[df_not_done.id_GEE == name, [method_cour_name]] = new_col
-                        stop = True
-
-            method_name = "percentile"
+        list_methods = [(x, y) for x in ["percentile", "persistence"] for y in range(1,6)]
+        for method_name, method_number in list_methods:
             method_cour_name = method_name + str(method_number)
 
             print(" " * 5 + "- Method used: " + method_name + " " + str(method_number))
@@ -191,60 +171,54 @@ def apply_all_methods_save(filename, sheet_name):
                                                                 region_of_interest,
                                                                 method_number=method_number,
                                                                 method_pred=method_name)[0]
-                    new_col = newColumnsFromImage(df_pixels, cloud_score_persistence, False)
-                    df_not_done.loc[df_not_done.id_GEE == name, [method_cour_name]] = new_col
+                    # Google answer (Python object)
+                    pixel_res = np.array(newColumnsFromImage(df_pixels,
+                                                             cloud_score_persistence,
+                                                             False))
                     stop = True
+
                 except ee.ee_exception.EEException as e:
                     print(" " * 10 + "Error GEE occurs:", e)
                     if str(e)[:18] == 'Dictionary.toArray':
-                        new_col = ["ERROR" for _ in range(df_pixels.shape[0])]
-                        df_not_done.loc[df_not_done.id_GEE == name, [method_cour_name]] = new_col
+                        print(" " * 15 + "Images skiped")
+                        pixel_res = ["ERROR" for _ in range(df_pixels.shape[0])]
                         stop = True
+            new_df = pd.DataFrame({
+                "index": pixel_res[:, 0],
+                method_cour_name: pixel_res[:, 0],
+            })
 
-        
-        print(" " * 5 + "- Method used: tree1")
-        while True:
-            try:
-                new_col = newColumnsFromImage(df_pixels, getMaskTree1(image), True)
-                df_not_done.loc[df_not_done.id_GEE == name, ["tree1"]] = new_col
-                break
-            except ee.ee_exception.EEException as e:
-                print(" " * 10 + "Error GEE occurs:", e)
+            # Update the column of current method on "index" index
+            df_total = new_df.combine_first(df_total)
 
-        print(" " * 5 + "- Method used: tree2")
-        while True:
-            try:
-                new_col = newColumnsFromImage(df_pixels, getMaskTree2(image), True)
-                df_not_done.loc[df_not_done.id_GEE == name, ["tree2"]] = new_col
-                break
-            except ee.ee_exception.EEException as e:
-                print(" " * 10 + "Error GEE occurs:", e)
-        
-        print(" " * 5 + "- Method used: tree3")
-        while True:
-            try:
-                new_col = newColumnsFromImage(df_pixels, getMaskTree3(image), True)
-                df_not_done.loc[df_not_done.id_GEE == name, ["tree3"]] = new_col
-                break
-            except ee.ee_exception.EEException as e:
-                print(" " * 10 + "Error GEE occurs:", e)
 
-        print("Sauvegarde")
-        df_total = df_already_done.append(df_not_done)
+        for method in ["tree1", "tree2", "tree3"]:
+            print(" " * 5 + "- Method used: {0}".format(method))
+            stop = False
+            while  not stop:
+                try:
+
+                    # Google answer (Python object)
+                    pixel_res = np.array(newColumnsFromImage(df_pixels, getMaskTree1(image),True))
+
+                    stop = True
+                except ee.ee_exception.EEException as e:
+                    print(" " * 10 + "Error GEE occurs:", e)
+
+            # Create df from GEE answer
+            new_df = pd.DataFrame({
+                "index": pixel_res[:, 0],
+                method_cour_name: pixel_res[:, 0],
+            })
+
+            # Update the column of current method on "index" index
+            df_total = new_df.combine_first(df_total)
 
         # Save - export
-        df_total = df_total[df_total.filter(regex='^(?!Unnamed)').columns]
-        df_total.to_excel(filename, sheet_name="Training", index=False)
-        # Read again (update df: restart from last row)
-        # df_full = pd.read_excel(filename)
-        # df_full = df_full[df_full.filter(regex='^(?!Unnamed)').columns]
+        export_df_to_excel(df_total, "Training")
 
-        # Update progress bar
-        # progress(_ * 100/80)
-        print("Image: {0}/{1} = {2} %".format(_+1, nb_group, (_+1)/nb_group*100))
         print("*" * 50)
-
-    # endProgress()
+    print("FINISHED !!!!")
 
 def find_problematic_pictures(filename):
     """
@@ -280,3 +254,17 @@ if __name__ == "__main__":
     file_name = "Data/results.xlsx"
     sheet_name = "Training"
     apply_all_methods_save(file_name, sheet_name)
+
+    # import time
+    # t1 = time.time()
+    # df_total = pd.read_excel(file_name, sheet_name="Training")
+    # t2 = time.time()
+
+    # print("Read in %5s" % (t2 - t1))
+    # ~ 30s
+    # df_total["tree1"] = -1
+    # t3 = time.time()
+    # print("Process in %5s" % (t3 - t2))
+    # export_df_to_excel(df_total, sheet_name)
+    # print("Written in %5s" % (time.time() - t3))
+    # ~ 150s = 2min 30
