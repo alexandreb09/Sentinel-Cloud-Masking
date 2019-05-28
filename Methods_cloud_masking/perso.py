@@ -57,9 +57,33 @@ def ComputeCloudCoverGeomSentinel(img, region_of_interest):
     img = img.set("CC", img.get('CLOUDY_PIXEL_PERCENTAGE'))
     return img
 
-def filter_partial_tiles(images, image):
-    nb_pixels = ee.Number(ee.Image(image).get("system:asset_size")).multiply(0.9)
-    return ee.ImageCollection(images).filter(ee.Filter.gt('system:asset_size', nb_pixels))
+def filter_partial_tiles(images_background, image, region_of_interest):
+
+    # def set_nb_pixels_roi(img):
+    #     img = ee.Image(img)
+    #     # print(img.bandNames().getInfo())
+    #     first_band = img.bandNames().get(0)
+    #     nb_pixels = img.clip(region_of_interest) \
+    #                     .reduceRegion(reducer=ee.Reducer.count(),
+    #                                    geometry=region_of_interest,
+    #                                    bestEffort=True) \
+    #                     .get(first_band)
+    #     nb_pixels = ee.Algorithms.If(nb_pixels, nb_pixels, 0)
+    #     return img.set({"NB_PIXELS_ROI": nb_pixels})
+    from Methods_cloud_masking.perso_luigi_utils import getGeometryImage
+
+    def set_area_roi(image):
+        image = ee.Image(image)
+        pol = getGeometryImage(image)
+        pol = ee.Geometry.Polygon(ee.Geometry(image.get('system:footprint') ).coordinates() )
+        ratio = pol.intersection(region_of_interest).area() \
+                            .divide(region_of_interest.area())
+        return image.set({"common_area": ratio})
+
+    # Add nb of pixels in area of interest
+    images_background = images_background.map(set_area_roi)
+
+    return images_background.filter(ee.Filter.gt("common_area", 0.98))
 
 
 
@@ -82,7 +106,7 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
 
     sentinel_info = sentinel_img.getInfo()                                  # Sentinel infos
     sentinel_full_id = sentinel_info['id']                                  # full image ID
-    image_index = sentinel_info['properties']['system:index']               # Imafe index
+    image_index = sentinel_info['properties']['system:index']               # Image index
     sentinel_collection = sentinel_full_id.replace("/" + image_index, "")   # Sentinel collection (base for background)
 
     MGRS_TILE = sentinel_info['properties']['MGRS_TILE']                    # Tile the image analyzed
@@ -98,7 +122,7 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
             .filterBounds(region_of_interest) \
             .filter(ee.Filter.eq("MGRS_TILE", MGRS_TILE))
 
-    sentinel_collection = filter_partial_tiles(sentinel_collection, sentinel_img)
+    sentinel_collection = filter_partial_tiles(sentinel_collection, sentinel_img, region_of_interest)
 
     # Inclusion of current image in background
     if not include_img:

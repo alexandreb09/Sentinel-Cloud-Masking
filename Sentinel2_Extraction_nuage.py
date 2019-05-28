@@ -16,7 +16,7 @@ from Methods_cloud_masking.perso_parameters import GEOMETRY_PER_IMAGE, PARAMS_SE
 import os
 import requests
 
-cleanScreen()
+# cleanScreen()
 
 ee.Initialize()
 
@@ -32,7 +32,7 @@ method = "persistence"
 
 # Select image to remove clouds
 # image_predict_clouds = ee.Image(IMAGE_NAMES.get(image_number))
-image_predict_clouds = ee.Image("COPERNICUS/S2/20151206T042142_20151206T042447_T46RGV")
+image_predict_clouds = ee.Image("COPERNICUS/S2/20151206T092352_20151206T092351_T34SDH")
 # image_predict_clouds = ee.Image("COPERNICUS/S2/20160205T103556_20160205T174515_T32TLR")
 
 # Define area of interest
@@ -81,7 +81,7 @@ def viz_cloudscore_mask(cloudscoremask):
 #     Persistence method     #
 ##############################
 
-for i in range(1, 6):
+for i in range(4, 6):
     print("Method used : {0}_{1}".format(method, i))
     cloud_score_persistence, pred_persistence = multitemporal_cloud_masking. \
         CloudClusterScore(image_predict_clouds,

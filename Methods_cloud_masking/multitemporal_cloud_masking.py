@@ -525,6 +525,7 @@ def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
     offset = ee.Number(0).max(size_img_coll.subtract(number_of_images))
     imagenes_training = imgColl.toList(count=number_of_images, offset=offset)
 
+
     # join images into a single image
     # band_names = landsat_img.bandNames()
     for lag in range(1, number_of_images + 1):

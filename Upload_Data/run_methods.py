@@ -40,7 +40,7 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
         row = ee.List(row)
         point = ee.Geometry.Point(row.slice(1, 3))
         return row.slice(0, 1).add(mask_prev.reduceRegion(ee.Reducer.first(), point, 20)
-                            .get(key))
+                                   .get(key))
     # GEE object : list of prediction for each pixel (1 x nb_pixels)
     new_col = array_coordinate_GEE.map(get_pixel_result)
 
@@ -125,15 +125,17 @@ def apply_all_methods_save(filename):
     Arguments:
         :param filename: filename to process
     """
+
     #  Read the excel file
-    df_total = pd.read_excel(filename, sheet_name="Training")
+    df_total = pd.read_excel(filename, sheet_name = "Training")
+
+    df_total["index"] = [i for i in range(df_total.shape[0])]
 
     # Boolean vector of image to process
     boolean_vector_todo = df_total["percentile1"].isnull()
 
-    # Split total dataframe en already done and todo
+    # Split total dataframe in: done and todo
     df_todo = df_total[boolean_vector_todo].sort_values("id_GEE")
-
 
     # Nb images totals
     nb_images_total = len(df_total["id_GEE"].unique())
@@ -175,12 +177,9 @@ def apply_all_methods_save(filename):
                     print(" " * 10 + "Error GEE occurs:", e)
 
             # Create df from GEE answer
-            new_df = pd.DataFrame({
-                "index": pixel_res[:, 0],
-                method: pixel_res[:, 0],
-            })
-
-            print(pixel_res[:20])
+            new_df = pd.DataFrame({"index": pixel_res[:, 0],
+                                   method: pixel_res[:, 1]})
+            new_df = new_df.set_index("index")
 
             # Update the column of current method on "index" index
             df_total = new_df.combine_first(df_total)
@@ -194,10 +193,15 @@ def apply_all_methods_save(filename):
             stop = False
             while not stop:
                 try:
-                    cloud_score_persistence = CloudClusterScore(image,
+                    cloud_score_image = CloudClusterScore(image,
                                                                 region_of_interest,
                                                                 method_number=method_number,
                                                                 method_pred=method_name)[0]
+
+                    # Google answer (Python object)
+                    pixel_res = np.array(newColumnsFromImage(df_pixels,
+                                                                cloud_score_image,
+                                                                False))
                     stop = True
 
                 except ee.ee_exception.EEException as e:
@@ -207,15 +211,13 @@ def apply_all_methods_save(filename):
                         pixel_res = ["ERROR" for _ in range(df_pixels.shape[0])]
                         stop = True
 
-            # Google answer (Python object)
-            pixel_res = np.array(newColumnsFromImage(df_pixels,
-                                                        cloud_score_persistence,
-                                                        False))
-            
+
+            # Create df from GEE answer
             new_df = pd.DataFrame({
-                "index": pixel_res[:, 1],
-                method_cour_name: pixel_res[:, 1],
+                "index": pixel_res[:, 0],
+                method: pixel_res[:, 1]
             })
+            new_df = new_df.set_index("index")
 
             # Update the column of current method on "index" index
             df_total = new_df.combine_first(df_total)
@@ -241,12 +243,12 @@ def find_problematic_pictures(filename):
         image = ee.Image(name)
         region_of_interest = getGeometryImage(image)
 
-        cloud_score_persistence = CloudClusterScore(image,
+        cloud_score_image = CloudClusterScore(image,
                                                     region_of_interest,
                                                     method_number=1,
                                                     method_pred="persistence")[0]
         try:
-            cloud_score_persistence.getInfo()
+            cloud_score_image.getInfo()
         except ee.ee_exception.EEException:
             print(name)
         print("Image: {0}/{1} = {2} %".format(i+1, nb_group,(i+1)/nb_group*100))

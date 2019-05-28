@@ -34,7 +34,7 @@ def getDataFromH5File(filename, number_rows_kept=None):
             "latitude": f["latitude"][:number_rows_kept].astype(np.float64),
             "cloud": f["cloud"][:number_rows_kept].astype(np.float64) == 1,
         })
-        
+
         print("Nb pixels:", f["longitude"].shape[0])
 
 
@@ -57,7 +57,7 @@ def filter_nb_pixels_per_image(df):
     list_to_keep = []
     N_TRAINING = 100000
     N_EVAL     = 30000
-    
+
     # While each image hasn't the required number of pixel:
     stop = False
     while not stop:
@@ -135,7 +135,7 @@ def create_training_evaluation_dataset(df):
 
     nb_images = len(df.groupby('id_GEE'))
     print("Nb images: ", nb_images)
-    
+
     nb_pixel_per_image_training = 100000 // nb_images + 1
     nb_pixel_per_image_evaluation = nb_pixel_per_image_training + 30000 // nb_images + 1
 
@@ -147,7 +147,7 @@ def create_training_evaluation_dataset(df):
         # Shuffle dataframe
         df_cloud = shuffle(df_cloud)
         df_not_cloud = shuffle(df_not_cloud)
-        
+
         # Select the n first pixels for training dataset
         training_cloud = training_cloud.append(df_cloud.iloc[:nb_pixel_per_image_training])
         training_not_cloud = training_not_cloud.append(df_not_cloud.iloc[:nb_pixel_per_image_training])
@@ -160,11 +160,7 @@ def create_training_evaluation_dataset(df):
     training = training_cloud[:100000].append(training_not_cloud[:100000]).sort_values("id_GEE")
     evaluation = evaluation_cloud[:30000].append(evaluation_not_cloud[:30000]).sort_values("id_GEE")
 
-    training["index"] = range(training.shape[0])
-    evaluation["index"] = range(evaluation.shape[0])
-    
-    return training[["index", "id_GEE", "longitude", "latitude", "cloud"]], \
-           evaluation[["index", "id_GEE", "longitude", "latitude", "cloud"]]
+    return training, evaluation
 
 
 def clean_H5_Files(filename):
@@ -226,7 +222,7 @@ def clean_H5_Files(filename):
                 # + sort per time + select first image
                 image = dataset.filterDate(date_deb, date_fin) \
                     .filterMetadata('MGRS_TILE', 'equals', granule_id) \
-                    .sort("system:time_end") \
+                    .sort("system:asset_size", False) \
                     .first()
                 # Add id to list of known id
                 dict_ID[granule_id + product_id] = image.getInfo()["id"]

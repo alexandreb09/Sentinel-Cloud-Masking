@@ -40,7 +40,6 @@ def viz_cloudscore_mask(cloudscoremask, imageRGB, region_of_interest):
 def iterate_over_all_image():
     for image_number in IMAGE_NAMES:
 
-
         # Select image to remove clouds
         image_predict_clouds = ee.Image(IMAGE_NAMES.get(image_number))
 
