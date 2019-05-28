@@ -98,7 +98,10 @@ def getIdImageInImageCollection(imgColl):
     """
     list_images_id = ee.List([])
     def getListId(item, list_images_id):
-        return ee.List(list_images_id).add(ee.Image(item).id())
+        try:
+            return ee.List(list_images_id).add(ee.Image(item).id())
+        except ee.ee_exception.EEException as e:
+            print("ici")
     
     id_list = imgColl.iterate(getListId, list_images_id)
     return id_list.getInfo()

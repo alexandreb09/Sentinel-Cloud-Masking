@@ -20,9 +20,9 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
         :param mask_prev: predicted image
         :param isTreeMethod: boolean for the key in the Google Earth Engine dictionary
     """
+
     key = "cluster"
-    if isTreeMethod:
-        key = "constant"
+    if isTreeMethod: key = "constant"
 
     # Get coordinates
     coordinates = df[["index", "longitude", "latitude"]].values.tolist()
@@ -38,14 +38,12 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
             :return:    ee.List([id, res])
         """
         row = ee.List(row)
-        point = ee.Geometry.Point(row.slice(0, 2))
-        return row.slice(2, 3).add(mask_prev.reduceRegion(ee.Reducer.first(), point, 20)
-                              .get(key))
-
+        point = ee.Geometry.Point(row.slice(1, 3))
+        return row.slice(0, 1).add(mask_prev.reduceRegion(ee.Reducer.first(), point, 20)
+                            .get(key))
     # GEE object : list of prediction for each pixel (1 x nb_pixels)
     new_col = array_coordinate_GEE.map(get_pixel_result)
 
-    # print(new_col.size().getInfo())
     # Return python list
     return new_col.getInfo()
 
@@ -122,7 +120,7 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
 #     return df
 
 
-def apply_all_methods_save(filename, sheet_name):
+def apply_all_methods_save(filename):
     """
     Arguments:
         :param filename: filename to process
@@ -138,13 +136,17 @@ def apply_all_methods_save(filename, sheet_name):
 
 
     # Nb images totals
-    nb_images_total = len(df_total["id_GEE"].unique)
+    nb_images_total = len(df_total["id_GEE"].unique())
 
     # for _ in range(image_already_done, nb_group + 1):
     for i, (name, df_pixels) in enumerate(df_todo.groupby("id_GEE")):
 
+        # Boolean vector of image to process
+        boolean_vector_todo = df_total["percentile1"].isnull()
+
         # Split total dataframe en already done and todo
         df_todo = df_total[boolean_vector_todo].sort_values("id_GEE")
+        df_done = df_total[~boolean_vector_todo].sort_values("id_GEE")
 
         nb_pixels_todo = df_done.shape[0]
         nb_pixels_done = df_todo.shape[0]
@@ -154,10 +156,35 @@ def apply_all_methods_save(filename, sheet_name):
         print("Image name: {0}".format(name))
         print("Nb images done: %2d e.g. %5d pixels" % (nb_image_done, nb_pixels_done))
         print("Nb images todo: %2d e.g. %5d pixels" % (nb_image_todo, nb_pixels_todo))
-        print("Progression: %2.2f %%" % (i/nb_images_total))
+        print("Progression: %2.2f %%" % (i/nb_images_total*100))
         # Create GEE Image - ROI
         image = ee.Image(name)
         region_of_interest = getGeometryImage(image)
+
+
+        for method in ["tree1", "tree2", "tree3"]:
+            print(" " * 5 + "- Method used: {0}".format(method))
+            stop = False
+            while  not stop:
+                try:
+                    # Google answer (Python object)
+                    pixel_res = np.array(newColumnsFromImage(df_pixels, getMaskTree1(image),True))
+
+                    stop = True
+                except ee.ee_exception.EEException as e:
+                    print(" " * 10 + "Error GEE occurs:", e)
+
+            # Create df from GEE answer
+            new_df = pd.DataFrame({
+                "index": pixel_res[:, 0],
+                method: pixel_res[:, 0],
+            })
+
+            print(pixel_res[:20])
+
+            # Update the column of current method on "index" index
+            df_total = new_df.combine_first(df_total)
+
 
         list_methods = [(x, y) for x in ["percentile", "persistence"] for y in range(1,6)]
         for method_name, method_number in list_methods:
@@ -171,10 +198,6 @@ def apply_all_methods_save(filename, sheet_name):
                                                                 region_of_interest,
                                                                 method_number=method_number,
                                                                 method_pred=method_name)[0]
-                    # Google answer (Python object)
-                    pixel_res = np.array(newColumnsFromImage(df_pixels,
-                                                             cloud_score_persistence,
-                                                             False))
                     stop = True
 
                 except ee.ee_exception.EEException as e:
@@ -183,36 +206,20 @@ def apply_all_methods_save(filename, sheet_name):
                         print(" " * 15 + "Images skiped")
                         pixel_res = ["ERROR" for _ in range(df_pixels.shape[0])]
                         stop = True
+
+            # Google answer (Python object)
+            pixel_res = np.array(newColumnsFromImage(df_pixels,
+                                                        cloud_score_persistence,
+                                                        False))
+            
             new_df = pd.DataFrame({
-                "index": pixel_res[:, 0],
-                method_cour_name: pixel_res[:, 0],
+                "index": pixel_res[:, 1],
+                method_cour_name: pixel_res[:, 1],
             })
 
             # Update the column of current method on "index" index
             df_total = new_df.combine_first(df_total)
 
-
-        for method in ["tree1", "tree2", "tree3"]:
-            print(" " * 5 + "- Method used: {0}".format(method))
-            stop = False
-            while  not stop:
-                try:
-
-                    # Google answer (Python object)
-                    pixel_res = np.array(newColumnsFromImage(df_pixels, getMaskTree1(image),True))
-
-                    stop = True
-                except ee.ee_exception.EEException as e:
-                    print(" " * 10 + "Error GEE occurs:", e)
-
-            # Create df from GEE answer
-            new_df = pd.DataFrame({
-                "index": pixel_res[:, 0],
-                method_cour_name: pixel_res[:, 0],
-            })
-
-            # Update the column of current method on "index" index
-            df_total = new_df.combine_first(df_total)
 
         # Save - export
         export_df_to_excel(df_total, "Training")
@@ -227,7 +234,6 @@ def find_problematic_pictures(filename):
         :param filename: 
     """
     df = pd.read_excel(filename)
-    df = df[df.filter(regex='^(?!Unnamed)').columns]
     nb_group = len(df.groupby("id_GEE"))
 
     for i, (name, df_pixels) in enumerate(df.groupby("id_GEE")):
@@ -253,7 +259,7 @@ if __name__ == "__main__":
 
     file_name = "Data/results.xlsx"
     sheet_name = "Training"
-    apply_all_methods_save(file_name, sheet_name)
+    apply_all_methods_save(file_name)
 
     # import time
     # t1 = time.time()

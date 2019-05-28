@@ -157,8 +157,8 @@ def create_training_evaluation_dataset(df):
         evaluation_not_cloud = evaluation_not_cloud.append(df_not_cloud.iloc[nb_pixel_per_image_training:nb_pixel_per_image_evaluation])
 
     # Resize to 100 000 and 30 000 pixels in total
-    training = training_cloud[:100000].append(training_not_cloud[:100000])
-    evaluation = evaluation_cloud[:30000].append(evaluation_not_cloud[:30000])
+    training = training_cloud[:100000].append(training_not_cloud[:100000]).sort_values("id_GEE")
+    evaluation = evaluation_cloud[:30000].append(evaluation_not_cloud[:30000]).sort_values("id_GEE")
 
     training["index"] = range(training.shape[0])
     evaluation["index"] = range(evaluation.shape[0])
