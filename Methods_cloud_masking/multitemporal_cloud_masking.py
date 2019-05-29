@@ -518,8 +518,7 @@ def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
                                             threshold_cc,
                                             number_preselect,
                                             region_of_interest)
-
-    # from Methods_cloud_masking.perso_luigi_utils import getIdImageInImageCollection
+    
     # print(getIdImageInImageCollection(imgColl))
 
     # print("Nb previous images (imageCollection): ", imgColl.size().getInfo())
@@ -538,21 +537,13 @@ def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
         image_add = image_add.select(band_names, new_band_names)
         sentinel_img = sentinel_img.addBands(image_add)
         sentinel_img = sentinel_img.set("system:time_start_lag_" + str(lag), image_add.get("system:time_start"))
-        sentinel_img = sentinel_img.set("CC_lag_" + str(lag), image_add.get("CC"))
+        # sentinel_img = sentinel_img.set("CC_lag_" + str(lag), image_add.get("CC"))
 
     return sentinel_img
 
-"""
-def PredictPercentile(img, region_of_interest, num_images=3, threshold_cc=5):
-    imgColl = perso.PreviousImagesWithCCSentinel(img, region_of_interest)
-    # imgColl = imgColl.filter(ee.Filter.lt("CC", threshold_cc)).limit(num_images)
-
-    img_percentile = imgColl.reduce(reducer=ee.Reducer.percentile(percentiles=[50]))
-    return img_percentile
-"""
 
 def CloudClusterScore(img, region_of_interest,
-                      method_pred= PARAMS_CLOUDCLUSTERSCORE_DEFAULT["method"],
+                      method_pred=PARAMS_CLOUDCLUSTERSCORE_DEFAULT["method"],
                       threshold_cc=PARAMS_CLOUDCLUSTERSCORE_DEFAULT["threshold_cc"],
                       method_number=PARAMS_SELECTBACKGROUND_DEFAULT['method_number'],
                       number_of_images=PARAMS_SELECTBACKGROUND_DEFAULT['number_of_images'],
@@ -602,9 +593,8 @@ def CloudClusterScore(img, region_of_interest,
     forecast_bands_sentinel2 = [i + "_forecast" for i in reflectance_bands_sentinel2]
 
     image_with_lags = SelectImagesTraining(method_number, img, region_of_interest,
-                                    number_of_images, number_preselect,
-                                    threshold_cc)
-
+                                            number_of_images, number_preselect,
+                                            threshold_cc)
 
     if method_pred == "persistence":
         reflectance_bands_sentinel2_lag_1 = [i + "_lag_1" for i in reflectance_bands_sentinel2]
@@ -646,6 +636,26 @@ def CloudClusterScore(img, region_of_interest,
     else:
         raise NotImplementedError("method %s is not implemented" % method_pred)
 
+    """
+    from Methods_cloud_masking import download
+    imageRGB = image_with_lags.select(reflectance_bands_sentinel2).visualize(max=8301,
+                                                                             min=-1655,
+                                            bands=["B4", "B3", "B2"])
+
+    image_file_original = download.MaybeDownloadThumb(imageRGB.clip(region_of_interest),
+                                                      params={"dimensions": '600x600'},
+                                                      image_name="image_with_lags.jpg")
+    
+    imageRGB = img_forecast.select(forecast_bands_sentinel2) \
+                                        .visualize(max=8301, min=-1655,
+                                                    bands=["B4_forecast",
+                                                            "B3_forecast",
+                                                            "B2_forecast"])
+    image_file_original = download.MaybeDownloadThumb(imageRGB.clip(region_of_interest),
+                                                      params={"dimensions": "600x600"},
+                                                      image_name="forecast.jpg")
+    """
+    
     clusterscore = clustering.ClusterClouds(image_with_lags.select(reflectance_bands_sentinel2),
                                             img_forecast.select(forecast_bands_sentinel2),
                                             region_of_interest=region_of_interest,

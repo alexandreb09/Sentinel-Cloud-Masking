@@ -125,6 +125,7 @@ def apply_all_methods_save(filename):
     Arguments:
         :param filename: filename to process
     """
+    list_errors = []
 
     #  Read the excel file
     df_total = pd.read_excel(filename, sheet_name = "Training")
@@ -138,7 +139,7 @@ def apply_all_methods_save(filename):
     df_todo = df_total[boolean_vector_todo].sort_values("id_GEE")
 
     # Nb images totals
-    nb_images_total = len(df_total["id_GEE"].unique())
+    nb_images_total = len(df_todo["id_GEE"].unique())
 
     # for _ in range(image_already_done, nb_group + 1):
     for i, (name, df_pixels) in enumerate(df_todo.groupby("id_GEE")):
@@ -150,8 +151,8 @@ def apply_all_methods_save(filename):
         df_todo = df_total[boolean_vector_todo].sort_values("id_GEE")
         df_done = df_total[~boolean_vector_todo].sort_values("id_GEE")
 
-        nb_pixels_todo = df_done.shape[0]
-        nb_pixels_done = df_todo.shape[0]
+        nb_pixels_todo = df_todo.shape[0]
+        nb_pixels_done = df_done.shape[0]
         nb_image_done = len(df_done["id_GEE"].unique())
         nb_image_todo = len(df_todo["id_GEE"].unique())
 
@@ -167,7 +168,7 @@ def apply_all_methods_save(filename):
         for method in ["tree1", "tree2", "tree3"]:
             print(" " * 5 + "- Method used: {0}".format(method))
             stop = False
-            while  not stop:
+            while not stop:
                 try:
                     # Google answer (Python object)
                     pixel_res = np.array(newColumnsFromImage(df_pixels, getMaskTree1(image),True))
@@ -202,21 +203,25 @@ def apply_all_methods_save(filename):
                     pixel_res = np.array(newColumnsFromImage(df_pixels,
                                                                 cloud_score_image,
                                                                 False))
+                    # Create df from GEE answer
+                    new_df = pd.DataFrame({
+                        "index": pixel_res[:, 0],
+                        method_cour_name: pixel_res[:, 1]
+                    })
                     stop = True
 
                 except ee.ee_exception.EEException as e:
                     print(" " * 10 + "Error GEE occurs:", e)
+
                     if str(e)[:18] == 'Dictionary.toArray':
                         print(" " * 15 + "Images skiped")
-                        pixel_res = ["ERROR" for _ in range(df_pixels.shape[0])]
+
+                        new_df = pd.DataFrame({'index': df_pixels["index"],
+                                                method_cour_name: "ERROR"})
+                        list_errors.append([method_cour_name, name])
                         stop = True
 
 
-            # Create df from GEE answer
-            new_df = pd.DataFrame({
-                "index": pixel_res[:, 0],
-                method_cour_name: pixel_res[:, 1]
-            })
             new_df = new_df.set_index("index")
 
             # Update the column of current method on "index" index
@@ -227,7 +232,9 @@ def apply_all_methods_save(filename):
         export_df_to_excel(df_total, "Training")
 
         print("*" * 50)
-    print("FINISHED !!!!")
+
+    print("!" * 58 + "\n" + "!" * 5 + " " * 20 + "FINISHED" + " " * 20 + "!" * 5 + "\n" + "!" * 58)
+    print("\n\n" + len(list_errors) + " occured: ", list_errors)
 
 def find_problematic_pictures(filename):
     """

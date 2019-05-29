@@ -59,22 +59,8 @@ def ComputeCloudCoverGeomSentinel(img, region_of_interest):
 
 def filter_partial_tiles(images_background, image, region_of_interest):
 
-    # def set_nb_pixels_roi(img):
-    #     img = ee.Image(img)
-    #     # print(img.bandNames().getInfo())
-    #     first_band = img.bandNames().get(0)
-    #     nb_pixels = img.clip(region_of_interest) \
-    #                     .reduceRegion(reducer=ee.Reducer.count(),
-    #                                    geometry=region_of_interest,
-    #                                    bestEffort=True) \
-    #                     .get(first_band)
-    #     nb_pixels = ee.Algorithms.If(nb_pixels, nb_pixels, 0)
-    #     return img.set({"NB_PIXELS_ROI": nb_pixels})
-    from Methods_cloud_masking.perso_luigi_utils import getGeometryImage
-
     def set_area_roi(image):
         image = ee.Image(image)
-        pol = getGeometryImage(image)
         pol = ee.Geometry.Polygon(ee.Geometry(image.get('system:footprint') ).coordinates() )
         ratio = pol.intersection(region_of_interest).area() \
                             .divide(region_of_interest.area())
@@ -99,16 +85,13 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
         :param threshold_cc: 
         :param number_preselect: 
         :param region_of_interest: 
-        :param include_img=False: if the current image (sentinel_img) should be included in the series 
     """
 
     # Get collection id
-
     sentinel_info = sentinel_img.getInfo()                                  # Sentinel infos
     sentinel_full_id = sentinel_info['id']                                  # full image ID
     image_index = sentinel_info['properties']['system:index']               # Image index
     sentinel_collection = sentinel_full_id.replace("/" + image_index, "")   # Sentinel collection (base for background)
-
     MGRS_TILE = sentinel_info['properties']['MGRS_TILE']                    # Tile the image analyzed
 
     # Retrieve previous images
@@ -122,16 +105,19 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
             .filterBounds(region_of_interest) \
             .filter(ee.Filter.eq("MGRS_TILE", MGRS_TILE))
 
+    # Remove image of same date
+    time_start = sentinel_info["properties"]['system:time_start']
+    filter_before = ee.Filter.lt('system:time_start', int(time_start) - 18 * 3600000)
+    filter_after =  ee.Filter.gt('system:time_start', int(time_start) + 18 * 3600000)
+    sentinel_collection = sentinel_collection.filter(ee.Filter.Or(filter_before, filter_after))
+
+    # Remove partial tiles images
     sentinel_collection = filter_partial_tiles(sentinel_collection, sentinel_img, region_of_interest)
 
-    # Inclusion of current image in background
-    if not include_img:
-        sentinel_collection = sentinel_collection.filter(
-            ee.Filter.neq('system:index', image_index))
-
-    # Récupération du background selon la méthode passée en argument
+    # Background selection according to the method number
     imgColl = callback_function_bg(methodNumber, sentinel_img, sentinel_collection, \
-                                   number_of_images, threshold_cc, number_preselect, region_of_interest)
+                                   number_of_images, threshold_cc, number_preselect, \
+                                   region_of_interest)
 
     # Get rid of images with many invalid values
     def _count_valid(img):
@@ -148,18 +134,11 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
         return img
 
     imgColl = imgColl.map(_count_valid).sort("valids").limit(number_of_images)
-    # .filter(ee.Filter.greaterThanOrEquals('valids', .5))
 
-
-    # Compute CC for the RoI
-    # imgColl = imgColl.map(lambda x: ComputeCloudCoverGeomSentinel(x, region_of_interest))
-
-    # def getId(item):
-    #     return ee.List(ee.Image(item).id())
-    # Extract the ID of each image object.
-    # id_list = imgColl.toList(imgColl.size()).map(getId)
-    # print('Id_list: ', [img for img in id_list.getInfo()])
-    # print('Nb Images background: ', len(id_list.getInfo()))
+    from Methods_cloud_masking.perso_luigi_utils import print_image_GEE_code
+    from Methods_cloud_masking.perso_luigi_utils import getIdImageInImageCollection
+    from Methods_cloud_masking.perso_luigi_utils import print_list_to_imageCollection
+    print_list_to_imageCollection(getIdImageInImageCollection(imgColl), 0)
 
     return imgColl
 
@@ -180,6 +159,12 @@ def PredictPercentile(method_number, img, region_of_interest, number_of_images,
                                             threshold_cc, number_preselect,
                                             region_of_interest, include_img=False,
                                             )
+    # from Methods_cloud_masking.perso_luigi_utils import print_image_GEE_code, \
+    #                                                     getIdImageInImageCollection, \
+    #                                                     print_list_to_imageCollection
+    # print_image_GEE_code(getIdImageInImageCollection(imgColl))
+    # print_list_to_imageCollection(getIdImageInImageCollection(imgColl), delta=0)
+
     img_percentile = imgColl.reduce(reducer = ee.Reducer.percentile(percentiles = [50]))
     return img_percentile
 

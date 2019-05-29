@@ -27,12 +27,13 @@ ee.Initialize()
 
 # Image Number analyzed
 image_number = 1
-method = "persistence"
+method = "percentile"
 
 
 # Select image to remove clouds
 # image_predict_clouds = ee.Image(IMAGE_NAMES.get(image_number))
-image_predict_clouds = ee.Image("COPERNICUS/S2/20151206T092352_20151206T092351_T34SDH")
+image_predict_clouds = ee.Image(
+    "COPERNICUS/S2/20151209T111442_20151209T111442_T30UWB")
 # image_predict_clouds = ee.Image("COPERNICUS/S2/20160205T103556_20160205T174515_T32TLR")
 
 # Define area of interest
@@ -43,6 +44,7 @@ region_of_interest = getGeometryImage(image_predict_clouds)
 datetime_image = datetime.utcfromtimestamp(image_predict_clouds.get("system:time_start")
                                            .getInfo() / 1000).strftime("%Y-%m-%d %H:%M:%S")
 
+list_images_show =[]
 """
 # Ajout NDVI
 image_predict_clouds = add_ndvi_bands(image_predict_clouds)
@@ -57,10 +59,10 @@ imageRGB = image_predict_clouds.visualize(max=8301,
                                           bands=[RED, GREEN, BLUE])
 
 
-image_file_original = download.MaybeDownloadThumb(imageRGB.clip(region_of_interest),
-                                                  params={"dimensions": IMAGE_DIM})
+# image_file_original = download.MaybeDownloadThumb(imageRGB.clip(region_of_interest),
+#                                                   params={"dimensions": IMAGE_DIM})
 
-list_images_show = [[image_file_original, "Image analyzed"]]
+# list_images_show.append([image_file_original, "Image analyzed"])
 
 #################################
 #     Visualization Image       #
@@ -81,7 +83,7 @@ def viz_cloudscore_mask(cloudscoremask):
 #     Persistence method     #
 ##############################
 
-for i in range(1, 6):
+for i in range(3, 6):
     print("Method used : {0}_{1}".format(method, i))
     cloud_score_persistence, pred_persistence = multitemporal_cloud_masking. \
         CloudClusterScore(image_predict_clouds,

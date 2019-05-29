@@ -88,3 +88,18 @@ def getIdImageInImageCollection(imgColl):
     
     id_list = imgColl.iterate(getListId, list_images_id)
     return id_list.getInfo()
+
+
+def print_image_GEE_code(liste):
+    print('-' * 10)
+    for i, l in enumerate(liste):
+        print(
+            'Map.addLayer(ee.Image("COPERNICUS/S2/' + l[2:] \
+            + '"), imageVisParam, "img' + str(i) + '");')
+
+def print_list_to_imageCollection(liste, delta=2):
+    print("ee.ImageCollection([")
+    for l in liste:
+        print(
+            'ee.Image("COPERNICUS/S2/' + l[delta:] + '"),')
+    print(']);')

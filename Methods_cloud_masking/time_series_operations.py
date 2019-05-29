@@ -16,8 +16,11 @@ def GenerateBandNames(bands, sufix):
     >>> GenerateBandNames(ee.List(["B1","B2"]), "_lag_1").getInfo()
     [u'B1_lag_1', u'B2_lag_1']
 
-    >>> import ee >>> ee.Initialize() >>> bands=ee.Image(
-    'LANDSAT/LC8_L1T_TOA_FMASK/LC81980332015119LGN00').bandNames() >>> GenerateBandNames(bands, "_lag_1").getInfo() [
+    >>> import ee
+    >>> ee.Initialize() 
+    >>> bands=ee.Image(
+    'LANDSAT/LC8_L1T_TOA_FMASK/LC81980332015119LGN00').bandNames()
+    >>> GenerateBandNames(bands, "_lag_1").getInfo() [
     u'B1_lag_1', u'B2_lag_1', u'B3_lag_1', u'B4_lag_1', u'B5_lag_1', u'B6_lag_1', u'B7_lag_1', u'B8_lag_1',
     u'B9_lag_1',u'B10_lag_1', u'B11_lag_1', u'BQA_lag_1', u'fmask_lag_1']
 
