@@ -1,8 +1,0 @@
-{
-    "python.pythonPath": "C:\\ProgramData\\Miniconda3\\python.exe",
-    "python.linting.pylintEnabled": true,
-    "python.linting.enabled": true,
-    "python.formatting.provider": "yapf",
-    "python.linting.pep8Enabled": false,
-    "python.linting.banditEnabled": false
-}
