@@ -519,6 +519,9 @@ def SelectImagesTraining(method_number, sentinel_img, region_of_interest,
                                             number_preselect,
                                             region_of_interest)
 
+    # from Methods_cloud_masking.perso_luigi_utils import getIdImageInImageCollection
+    # print(getIdImageInImageCollection(imgColl))
+
     # print("Nb previous images (imageCollection): ", imgColl.size().getInfo())
 
     size_img_coll = ee.Number(imgColl.size())

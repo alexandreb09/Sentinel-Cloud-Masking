@@ -215,7 +215,7 @@ def apply_all_methods_save(filename):
             # Create df from GEE answer
             new_df = pd.DataFrame({
                 "index": pixel_res[:, 0],
-                method: pixel_res[:, 1]
+                method_cour_name: pixel_res[:, 1]
             })
             new_df = new_df.set_index("index")
 

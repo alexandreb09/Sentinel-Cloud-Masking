@@ -83,7 +83,7 @@ def filter_partial_tiles(images_background, image, region_of_interest):
     # Add nb of pixels in area of interest
     images_background = images_background.map(set_area_roi)
 
-    return images_background.filter(ee.Filter.gt("common_area", 0.98))
+    return images_background.filter(ee.Filter.gt("common_area", 0.99))
 
 
 

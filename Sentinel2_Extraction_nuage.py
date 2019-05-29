@@ -81,7 +81,7 @@ def viz_cloudscore_mask(cloudscoremask):
 #     Persistence method     #
 ##############################
 
-for i in range(4, 6):
+for i in range(1, 6):
     print("Method used : {0}_{1}".format(method, i))
     cloud_score_persistence, pred_persistence = multitemporal_cloud_masking. \
         CloudClusterScore(image_predict_clouds,
