@@ -73,7 +73,7 @@ def unzipFile(source):
 
 def splitH5File(filename):
     """
-    Split the .h5 file in two file (middle)
+    Split the .h5 file in two files (same size)
     Argument: filename
         param filename: 
     """

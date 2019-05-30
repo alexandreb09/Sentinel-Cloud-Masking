@@ -73,7 +73,7 @@ def filter_nb_pixels_per_image(df):
         for name, df_images in df_grouped:
             # Compute the number of cloudy / non cloudy pixels
             nb_pixel_cloud = len(df_images[df_images.cloud == True])
-            nb_pixel_not_cloud = len(df_images[df_images.cloud == False])
+            nb_pixel_not_cloud = len(df_images[df_images.cloud == True])
             # If thoses numbers greater than n
             if nb_pixel_cloud > n or nb_pixel_not_cloud > n:
                 # The image is kept
@@ -105,6 +105,16 @@ def total_dataframe_filtered(filename, filename2):
 
     df = filter_nb_pixels_per_image(df)
 
+    # print("Before nb images: ", len(df.groupby('id_GEE')))
+    # list_unvalid = ["COPERNICUS/S2/20151206T042142_20151206T042447_T46RGV",
+    #             "COPERNICUS/S2/20151226T080933_20151226T112710_T36LXM",
+    #             "COPERNICUS/S2/20151228T002843_20151228T085259_T54HYD",
+    #             "COPERNICUS/S2/20151228T002843_20151228T085259_T55HCA",
+    #             "COPERNICUS/S2/20151228T002843_20151228T085259_T55HCU"]
+    # Remove problematic image
+    # df = df[~df.id_GEE.isin(list_unvalid)]
+    # print("nb pixels: ", df.shape[0])
+    # print("After nb images: ", len(df.groupby('id_GEE')))
     return df
 
 

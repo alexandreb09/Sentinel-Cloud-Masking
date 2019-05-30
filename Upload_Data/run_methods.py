@@ -12,7 +12,7 @@ from Methods_cloud_masking.perso_luigi_utils import getGeometryImage
 from Upload_Data.utils import startProgress, progress, endProgress, export_df_to_excel
 
 
-def newColumnsFromImage(df, mask_prev, isTreeMethod):
+def newColumnsFromImage(df, mask_prev, isTreeMethod, geometry):
     """
     Return the result of
     Arguments:
@@ -23,17 +23,10 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
 
     key = "cluster"
     if isTreeMethod: key = "constant"
+    key = mask_prev.bandNames().get(0)
 
     # Get coordinates
     coordinates = df[["index", "longitude", "latitude"]].values.tolist()
-
-    # Verif order longitude - lattitude
-    point = ee.Geometry.Point(coordinates[0][1:])
-    value_predicted = mask_prev.reduceRegion(ee.Reducer.first(), point, 20).get(key)
-    value_predicted = ee.Algorithms.If(
-        ee.Algorithms.IsEqual(value_predicted, 0), value_predicted,
-        ee.Algorithms.If(ee.Algorithms.IsEqual(value_predicted, 1),
-                         value_predicted, None))
 
     # GEE array of coordinate
     array_coordinate_GEE = ee.List(coordinates)
@@ -46,29 +39,25 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
             :return:    ee.List([id, res])
         """
         row = ee.List(row)
-        coord = row.slice(1, 3)
-        point = ee.Geometry.Point(coord)
-        value_predicted = mask_prev.reduceRegion(ee.Reducer.first(), point, 20).get(key)
-
-        # Replace None values by -1 (prevent errors: add on null variable)
-        value_predicted = ee.Algorithms.If(
-            ee.Algorithms.IsEqual(value_predicted, 0),
-                                  value_predicted,
-                                  ee.Algorithms.If(ee.Algorithms.IsEqual(value_predicted, 1),
-                                                                         value_predicted,
-                                                                         -1))
-        return row.slice(0, 1).add(value_predicted)
-
-    # GEE object : list of prediction for each pixel : [[index, result_pixel ], ..., [] ]
+        point = ee.Geometry.Point(row.slice(1, 3))
+        # Check if longitude - lattitude aren't swiped
+        point = point = ee.Geometry.Point(ee.Algorithms.If(point.containedIn(geometry),
+                                                           point.coordinates(),
+                                                           point.coordinates().reverse()))
+        # Apply reduction : extract pixel result
+        val = mask_prev.reduceRegion(ee.Reducer.first(), point, 20).get(key)
+        # Replace None value by -1
+        val = ee.Algorithms.If(ee.Algorithms.IsEqual(val, 0),
+                               val,
+                               ee.Algorithms.If(ee.Algorithms.IsEqual(val, 1),
+                                                val,
+                                                -1))
+        return row.slice(0, 1).add(val)
+    # GEE object : list of prediction for each pixel (1 x nb_pixels)
     new_col = array_coordinate_GEE.map(get_pixel_result)
 
     # Return python list
-    new_col_pyth = new_col.getInfo()
-
-    if any(-1 in sublist for sublist in new_col_pyth):
-        print(" " * 10 + "Some pixels seem to be out of the image bounds")
-
-    return new_col_pyth
+    return new_col.getInfo()
 
 
 # def applyTreeMasking(df, method_name):
@@ -152,7 +141,6 @@ def apply_all_methods_save(filename):
 
     #  Read the excel file
     df_total = pd.read_excel(filename, sheet_name = "Training")
-    df_total = df_total[::-1]
 
     df_total["index"] = [i for i in range(df_total.shape[0])]
 
@@ -188,9 +176,6 @@ def apply_all_methods_save(filename):
         image = ee.Image(name)
         region_of_interest = getGeometryImage(image)
 
-
-
-
         list_methods = [(x, y) for x in ["percentile", "persistence"] for y in range(1,6)]
         for method_name, method_number in list_methods:
             method_cour_name = method_name + str(method_number)
@@ -207,9 +192,8 @@ def apply_all_methods_save(filename):
                     # Google answer (Python object)
                     pixel_res = np.array(newColumnsFromImage(df_pixels,
                                                                 cloud_score_image,
-                                                                False))
-                    if pixel_res[0][1] == -1:
-                        print(" " * 10 + "Some pixels seems not to be in the image")
+                                                                False,
+                                                                region_of_interest))
                     # Create df from GEE answer
                     new_df = pd.DataFrame({
                         "index": pixel_res[:, 0],
@@ -240,7 +224,8 @@ def apply_all_methods_save(filename):
             while not stop:
                 try:
                     # Google answer (Python object)
-                    pixel_res = np.array(newColumnsFromImage(df_pixels, getMaskTree1(image),True))
+                    pixel_res = np.array(newColumnsFromImage(df_pixels, getMaskTree1(image),
+                                                             True, region_of_interest))
 
                     stop = True
                 except ee.ee_exception.EEException as e:
@@ -255,7 +240,7 @@ def apply_all_methods_save(filename):
             df_total = new_df.combine_first(df_total)
 
         # Save - export
-        export_df_to_excel(df_total, "Training")
+        export_df_to_excel(df_total, "Training", filename=filename)
 
         print("*" * 50)
 
@@ -292,7 +277,7 @@ if __name__ == "__main__":
     # print(df_training)
     # df_res = apply_method_1_to_5(df_training, method_name)
 
-    file_name = "Data/results.xlsx"
+    file_name = "Data/training - JH.xlsx"
     sheet_name = "Training"
     apply_all_methods_save(file_name)
 
