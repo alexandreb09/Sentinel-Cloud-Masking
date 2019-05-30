@@ -135,10 +135,10 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
 
     imgColl = imgColl.map(_count_valid).sort("valids").limit(number_of_images)
 
-    from Methods_cloud_masking.perso_luigi_utils import print_image_GEE_code
-    from Methods_cloud_masking.perso_luigi_utils import getIdImageInImageCollection
-    from Methods_cloud_masking.perso_luigi_utils import print_list_to_imageCollection
-    print_list_to_imageCollection(getIdImageInImageCollection(imgColl), 0)
+    # from Methods_cloud_masking.perso_luigi_utils import print_image_GEE_code
+    # from Methods_cloud_masking.perso_luigi_utils import getIdImageInImageCollection
+    # from Methods_cloud_masking.perso_luigi_utils import print_list_to_imageCollection
+    # print_list_to_imageCollection(getIdImageInImageCollection(imgColl), 0)
 
     return imgColl
 

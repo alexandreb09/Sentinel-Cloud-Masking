@@ -35,12 +35,14 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
         """
         Arguments:
             :param row: ee.List([id, long, lat])
+            
             :return:    ee.List([id, res])
         """
         row = ee.List(row)
         point = ee.Geometry.Point(row.slice(1, 3))
-        return row.slice(0, 1).add(mask_prev.reduceRegion(ee.Reducer.first(), point, 20)
-                                   .get(key))
+        value_predicted = mask_prev.reduceRegion(ee.Reducer.first(), point, 20).get(key)
+        value_predicted = ee.Algorithms.If(value_predicted, value_predicted, -1)
+        return row.slice(0, 1).add(value_predicted)
     # GEE object : list of prediction for each pixel (1 x nb_pixels)
     new_col = array_coordinate_GEE.map(get_pixel_result)
 
@@ -129,6 +131,7 @@ def apply_all_methods_save(filename):
 
     #  Read the excel file
     df_total = pd.read_excel(filename, sheet_name = "Training")
+    df_total = df_total[::-1]
 
     df_total["index"] = [i for i in range(df_total.shape[0])]
 
@@ -165,25 +168,6 @@ def apply_all_methods_save(filename):
         region_of_interest = getGeometryImage(image)
 
 
-        for method in ["tree1", "tree2", "tree3"]:
-            print(" " * 5 + "- Method used: {0}".format(method))
-            stop = False
-            while not stop:
-                try:
-                    # Google answer (Python object)
-                    pixel_res = np.array(newColumnsFromImage(df_pixels, getMaskTree1(image),True))
-
-                    stop = True
-                except ee.ee_exception.EEException as e:
-                    print(" " * 10 + "Error GEE occurs:", e)
-
-            # Create df from GEE answer
-            new_df = pd.DataFrame({"index": pixel_res[:, 0],
-                                   method: pixel_res[:, 1]})
-            new_df = new_df.set_index("index")
-
-            # Update the column of current method on "index" index
-            df_total = new_df.combine_first(df_total)
 
 
         list_methods = [(x, y) for x in ["percentile", "persistence"] for y in range(1,6)]
@@ -227,6 +211,25 @@ def apply_all_methods_save(filename):
             # Update the column of current method on "index" index
             df_total = new_df.combine_first(df_total)
 
+        for method in ["tree1", "tree2", "tree3"]:
+            print(" " * 5 + "- Method used: {0}".format(method))
+            stop = False
+            while not stop:
+                try:
+                    # Google answer (Python object)
+                    pixel_res = np.array(newColumnsFromImage(df_pixels, getMaskTree1(image),True))
+
+                    stop = True
+                except ee.ee_exception.EEException as e:
+                    print(" " * 10 + "Error GEE occurs:", e)
+
+            # Create df from GEE answer
+            new_df = pd.DataFrame({"index": pixel_res[:, 0],
+                                   method: pixel_res[:, 1]})
+            new_df = new_df.set_index("index")
+
+            # Update the column of current method on "index" index
+            df_total = new_df.combine_first(df_total)
 
         # Save - export
         export_df_to_excel(df_total, "Training")
