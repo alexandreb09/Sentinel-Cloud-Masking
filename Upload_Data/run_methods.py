@@ -27,6 +27,14 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
     # Get coordinates
     coordinates = df[["index", "longitude", "latitude"]].values.tolist()
 
+    # Verif order longitude - lattitude
+    point = ee.Geometry.Point(coordinates[0][1:])
+    value_predicted = mask_prev.reduceRegion(ee.Reducer.first(), point, 20).get(key)
+    value_predicted = ee.Algorithms.If(
+        ee.Algorithms.IsEqual(value_predicted, 0), value_predicted,
+        ee.Algorithms.If(ee.Algorithms.IsEqual(value_predicted, 1),
+                         value_predicted, None))
+
     # GEE array of coordinate
     array_coordinate_GEE = ee.List(coordinates)
 
@@ -35,19 +43,32 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod):
         """
         Arguments:
             :param row: ee.List([id, long, lat])
-            
             :return:    ee.List([id, res])
         """
         row = ee.List(row)
-        point = ee.Geometry.Point(row.slice(1, 3))
+        coord = row.slice(1, 3)
+        point = ee.Geometry.Point(coord)
         value_predicted = mask_prev.reduceRegion(ee.Reducer.first(), point, 20).get(key)
-        value_predicted = ee.Algorithms.If(value_predicted, value_predicted, -1)
+
+        # Replace None values by -1 (prevent errors: add on null variable)
+        value_predicted = ee.Algorithms.If(
+            ee.Algorithms.IsEqual(value_predicted, 0),
+                                  value_predicted,
+                                  ee.Algorithms.If(ee.Algorithms.IsEqual(value_predicted, 1),
+                                                                         value_predicted,
+                                                                         -1))
         return row.slice(0, 1).add(value_predicted)
-    # GEE object : list of prediction for each pixel (1 x nb_pixels)
+
+    # GEE object : list of prediction for each pixel : [[index, result_pixel ], ..., [] ]
     new_col = array_coordinate_GEE.map(get_pixel_result)
 
     # Return python list
-    return new_col.getInfo()
+    new_col_pyth = new_col.getInfo()
+
+    if any(-1 in sublist for sublist in new_col_pyth):
+        print(" " * 10 + "Some pixels seem to be out of the image bounds")
+
+    return new_col_pyth
 
 
 # def applyTreeMasking(df, method_name):
@@ -187,6 +208,8 @@ def apply_all_methods_save(filename):
                     pixel_res = np.array(newColumnsFromImage(df_pixels,
                                                                 cloud_score_image,
                                                                 False))
+                    if pixel_res[0][1] == -1:
+                        print(" " * 10 + "Some pixels seems not to be in the image")
                     # Create df from GEE answer
                     new_df = pd.DataFrame({
                         "index": pixel_res[:, 0],
