@@ -1,3 +1,4 @@
+from Methods_cloud_masking import download
 from Methods_cloud_masking import normalization
 from Methods_cloud_masking.perso_parameters import PARAMS_CLOUDCLUSTERSCORE_DEFAULT, SENTINEL2_BANDNAMES
 import ee
@@ -117,10 +118,33 @@ def ClusterClouds(image,
         training, mean, std = normalization.ComputeNormalizationFeatureCollection(training,
                                                                                 BANDS_MODEL)
         clusterer = ee.Clusterer.wekaKMeans(n_clusters).train(training)
+        print(clusterer.getInfo())
         img_differences_normalized = normalization.ApplyNormalizationImage(img_differences,
                                                                            BANDS_MODEL,
                                                                            mean, std)
         result = img_differences_normalized.cluster(clusterer)
+
+        # create the vizualization parameters
+        viz = {"opacity": 1,
+                "bands": ["B4", "B3", "B2"],
+                "min": 635.3169579171957,
+                "max": 1828.8497087494707,
+                "gamma": 1}
+
+
+        # Visualize area of interest
+        imageRGB = background_prediction.visualize(max=8301,
+                                                    min=-1655,
+                                                    bands=["B4_forecast", "B3_forecast", "B2_forecast"])
+
+
+        image_file_original = download.MaybeDownloadThumb(imageRGB.clip(region_of_interest),
+                                                          params={"dimensions": '600x600'},
+                                                          )
+
+        # ee.mapclient.centerMap(143.8754, -37.5042, 8)
+        # ee.mapclient.addToMap(image, viz, "mymap")
+ 
 
         multitemporal_score, reflectance_score = SelectClusters(image, background_prediction,
                                                                 result, n_clusters, bands_thresholds,
