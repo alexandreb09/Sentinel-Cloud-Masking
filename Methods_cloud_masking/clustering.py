@@ -3,7 +3,7 @@ from Methods_cloud_masking import normalization
 from Methods_cloud_masking.perso_parameters import PARAMS_CLOUDCLUSTERSCORE_DEFAULT, SENTINEL2_BANDNAMES
 import ee
 
-BANDS_MODEL = SENTINEL2_BANDNAMES
+BANDS_MODEL = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12']
 
 
 def SelectClusters(image,
@@ -107,16 +107,13 @@ def ClusterClouds(image,
     """
 
     img_differences = image.subtract(background_prediction)
-
+    img_differences = img_differences.select(BANDS_MODEL)
 
     if do_clustering:
-        # print("roi: ", region_of_interest.getInfo())
         training = img_differences.sample(region=region_of_interest,
                                         scale=30, numPixels=numPixels,
                                         tileScale=tileScale
                                         )
-
-        # print("Training bands: ", training.getInfo())
 
         training, mean, std = normalization.ComputeNormalizationFeatureCollection(training,
                                                                                 BANDS_MODEL)

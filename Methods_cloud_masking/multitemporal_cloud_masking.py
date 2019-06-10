@@ -656,9 +656,9 @@ def CloudClusterScore(img, region_of_interest,
                                                       image_name="forecast.jpg")
     """
 
-    from .perso_luigi_utils import export_as_asset
-    export_as_asset(img_forecast.select(forecast_bands_sentinel2),
-                    region_of_interest, assetId="users/ab43536/reduceregion_issue")
+    # from .perso_luigi_utils import export_as_asset
+    # export_as_asset(img_forecast.select(forecast_bands_sentinel2),
+    #                 region_of_interest, assetId="users/ab43536/reduceregion_issue")
 
     clusterscore = ClusterClouds(image_with_lags.select(reflectance_bands_sentinel2),
                                 img_forecast.select(forecast_bands_sentinel2),

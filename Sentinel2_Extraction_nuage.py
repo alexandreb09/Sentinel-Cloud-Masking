@@ -35,10 +35,10 @@ method = "percentile"
 # image_predict_clouds = ee.Image(IMAGE_NAMES.get(image_number))
 
 # Sample null
-# image_predict_clouds = ee.Image("COPERNICUS/S2/20151228T002843_20151228T085259_T54HYD")
+image_predict_clouds = ee.Image("COPERNICUS/S2/20151228T002843_20151228T085259_T54HYD")
 
 # Reduce region is none
-image_predict_clouds = ee.Image("COPERNICUS/S2/20160123T223141_20160124T000920_T60KWF")
+# image_predict_clouds = ee.Image("COPERNICUS/S2/20160123T223141_20160124T000920_T60KWF")
 
 # Looks ok
 # image_predict_clouds = ee.Image("COPERNICUS/S2/20160205T103556_20160205T174515_T32TLR")
