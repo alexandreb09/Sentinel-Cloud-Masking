@@ -12,7 +12,7 @@ from Methods_cloud_masking import kernel
 from Methods_cloud_masking import converters
 from Methods_cloud_masking import time_series_operations
 from Methods_cloud_masking import normalization
-from Methods_cloud_masking import clustering
+from .clustering import ClusterClouds
 from Methods_cloud_masking.perso_parameters import SENTINEL2_BANDNAMES, \
                                              PARAMS_CLOUDCLUSTERSCORE_DEFAULT, \
                                              PARAMS_SELECTBACKGROUND_DEFAULT, \
@@ -655,16 +655,20 @@ def CloudClusterScore(img, region_of_interest,
                                                       params={"dimensions": "600x600"},
                                                       image_name="forecast.jpg")
     """
-    
-    clusterscore = clustering.ClusterClouds(image_with_lags.select(reflectance_bands_sentinel2),
-                                            img_forecast.select(forecast_bands_sentinel2),
-                                            region_of_interest=region_of_interest,
-                                            threshold_dif_cloud=params["threshold_dif_cloud"],
-                                            do_clustering=params["do_clustering"],
-                                            threshold_reflectance=params["threshold_reflectance"],
-                                            numPixels=params["numPixels"],
-                                            bands_thresholds=params["bands_thresholds"],
-                                            growing_ratio=params["growing_ratio"],
-                                            n_clusters=params["n_clusters"])
+
+    from .perso_luigi_utils import export_as_asset
+    export_as_asset(img_forecast.select(forecast_bands_sentinel2),
+                    region_of_interest, assetId="users/ab43536/reduceregion_issue")
+
+    clusterscore = ClusterClouds(image_with_lags.select(reflectance_bands_sentinel2),
+                                img_forecast.select(forecast_bands_sentinel2),
+                                region_of_interest=region_of_interest,
+                                threshold_dif_cloud=params["threshold_dif_cloud"],
+                                do_clustering=params["do_clustering"],
+                                threshold_reflectance=params["threshold_reflectance"],
+                                numPixels=params["numPixels"],
+                                bands_thresholds=params["bands_thresholds"],
+                                growing_ratio=params["growing_ratio"],
+                                n_clusters=params["n_clusters"])
 
     return clusterscore, img_forecast

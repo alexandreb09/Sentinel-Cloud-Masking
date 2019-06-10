@@ -108,39 +108,44 @@ def ClusterClouds(image,
 
     img_differences = image.subtract(background_prediction)
 
-    if do_clustering:
 
+    if do_clustering:
+        # print("roi: ", region_of_interest.getInfo())
         training = img_differences.sample(region=region_of_interest,
                                         scale=30, numPixels=numPixels,
                                         tileScale=tileScale
                                         )
 
+        # print("Training bands: ", training.getInfo())
+
         training, mean, std = normalization.ComputeNormalizationFeatureCollection(training,
                                                                                 BANDS_MODEL)
         clusterer = ee.Clusterer.wekaKMeans(n_clusters).train(training)
-        print(clusterer.getInfo())
+        # print("mean: ", mean.getInfo())
+        # print("std: ", std.getInfo())
         img_differences_normalized = normalization.ApplyNormalizationImage(img_differences,
                                                                            BANDS_MODEL,
                                                                            mean, std)
+        # print(img_differences_normalized.getInfo())
         result = img_differences_normalized.cluster(clusterer)
 
         # create the vizualization parameters
-        viz = {"opacity": 1,
-                "bands": ["B4", "B3", "B2"],
-                "min": 635.3169579171957,
-                "max": 1828.8497087494707,
-                "gamma": 1}
+        # viz = {"opacity": 1,
+        #         "bands": ["B4", "B3", "B2"],
+        #         "min": 635.3169579171957,
+        #         "max": 1828.8497087494707,
+        #         "gamma": 1}
 
 
-        # Visualize area of interest
-        imageRGB = background_prediction.visualize(max=8301,
-                                                    min=-1655,
-                                                    bands=["B4_forecast", "B3_forecast", "B2_forecast"])
+        # # Visualize area of interest
+        # imageRGB = background_prediction.visualize(max=8301,
+        #                                             min=-1655,
+        #                                             bands=["B4_forecast", "B3_forecast", "B2_forecast"])
 
 
-        image_file_original = download.MaybeDownloadThumb(imageRGB.clip(region_of_interest),
-                                                          params={"dimensions": '600x600'},
-                                                          )
+        # image_file_original = download.MaybeDownloadThumb(imageRGB.clip(region_of_interest),
+        #                                                   params={"dimensions": '600x600'},
+        #                                                   )
 
         # ee.mapclient.centerMap(143.8754, -37.5042, 8)
         # ee.mapclient.addToMap(image, viz, "mymap")

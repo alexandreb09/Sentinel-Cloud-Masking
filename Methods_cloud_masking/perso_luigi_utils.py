@@ -103,3 +103,25 @@ def print_list_to_imageCollection(liste, delta=2):
         print(
             'ee.Image("COPERNICUS/S2/' + l[delta:] + '"),')
     print(']);')
+
+
+def export_as_asset(image, region_of_interest, description='background-export',
+                    scale=30, assetId='users/ab43536/background'):
+    """
+    Export image to GEE assets
+    Arguments:
+        :param image: 
+        :param region_of_interest: 
+        :param description='background-export': 
+        :param scale=30: 
+        :param assetId='users/ab43536/background': 
+    """               
+    ee.batch.Export.image.toAsset(
+        image=image,
+        description=description,
+        scale=scale,
+        assetId=assetId,
+        region=region_of_interest.coordinates().getInfo(),
+    ).start()
+    print("Brillant ! Exportation has started !")
+    

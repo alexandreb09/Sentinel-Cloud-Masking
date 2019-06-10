@@ -12,7 +12,7 @@ from Methods_cloud_masking import perso_display
 from Methods_cloud_masking import perso_tree
 from Methods_cloud_masking.perso_luigi_utils import cleanScreen, getGeometryImage
 from Methods_cloud_masking.perso_parameters import GEOMETRY_PER_IMAGE, PARAMS_SELECTBACKGROUND_DEFAULT, \
-                                            IMAGE_NAMES, RED, GREEN, BLUE, IMAGE_DIM
+    IMAGE_NAMES, RED, GREEN, BLUE, IMAGE_DIM
 import os
 import requests
 
@@ -33,8 +33,14 @@ method = "percentile"
 
 # Select image to remove clouds
 # image_predict_clouds = ee.Image(IMAGE_NAMES.get(image_number))
-image_predict_clouds = ee.Image(
-    "COPERNICUS/S2/20151228T002843_20151228T085259_T54HYD")
+
+# Sample null
+# image_predict_clouds = ee.Image("COPERNICUS/S2/20151228T002843_20151228T085259_T54HYD")
+
+# Reduce region is none
+image_predict_clouds = ee.Image("COPERNICUS/S2/20160123T223141_20160124T000920_T60KWF")
+
+# Looks ok
 # image_predict_clouds = ee.Image("COPERNICUS/S2/20160205T103556_20160205T174515_T32TLR")
 
 # Define area of interest
@@ -45,7 +51,7 @@ region_of_interest = getGeometryImage(image_predict_clouds)
 datetime_image = datetime.utcfromtimestamp(image_predict_clouds.get("system:time_start")
                                            .getInfo() / 1000).strftime("%Y-%m-%d %H:%M:%S")
 
-list_images_show =[]
+list_images_show = []
 """
 # Ajout NDVI
 image_predict_clouds = add_ndvi_bands(image_predict_clouds)
@@ -77,7 +83,7 @@ def viz_cloudscore_mask(cloudscoremask):
                                                       palette=['1f77b4', 'ff7f0e'])
     mosaic = ee.ImageCollection([imageRGB, cloudscoremask_vis]).mosaic()
     return download.MaybeDownloadThumb(mosaic.clip(region_of_interest),
-                                        params={"dimensions": IMAGE_DIM})
+                                       params={"dimensions": IMAGE_DIM})
 
 
 ##############################
@@ -137,7 +143,3 @@ title = 'Cloud masking : ee_ipl_uv - ' + method + ' methods\n Image number: ' + 
 perso_display.affichage(list_images_show, graph_title=title,
                         number_of_row=2, number_of_col=3,
                         display=True)
-
-
-
-        
