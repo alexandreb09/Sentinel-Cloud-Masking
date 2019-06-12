@@ -142,7 +142,7 @@ def apply_all_methods_save(filename):
     #  Read the excel file
     df_total = pd.read_excel(filename, sheet_name = "Training")
 
-    df_total["index"] = [i for i in range(df_total.shape[0])]
+    # df_total["index"] = [i for i in range(df_total.shape[0])]
 
     # Boolean vector of image to process
     boolean_vector_todo = df_total["percentile1"].isnull()
@@ -201,6 +201,7 @@ def apply_all_methods_save(filename):
                     })
                     stop = True
 
+
                 except ee.ee_exception.EEException as e:
                     print(" " * 10 + "Error GEE occurs:", e)
 
@@ -245,7 +246,7 @@ def apply_all_methods_save(filename):
         print("*" * 50)
 
     print("!" * 58 + "\n" + "!" * 5 + " " * 20 + "FINISHED" + " " * 20 + "!" * 5 + "\n" + "!" * 58)
-    print("\n\n" + len(list_errors) + " occured: ", list_errors)
+    print("\n\n" + str(len(list_errors)) + " occured: ", list_errors)
 
 def find_problematic_pictures(filename):
     """
@@ -277,7 +278,7 @@ if __name__ == "__main__":
     # print(df_training)
     # df_res = apply_method_1_to_5(df_training, method_name)
 
-    file_name = "Data/training - JH.xlsx"
+    file_name = "Data/results - JH.xlsx"
     sheet_name = "Training"
     apply_all_methods_save(file_name)
 

@@ -159,6 +159,9 @@ def create_training_evaluation_dataset(df):
     # Resize to 100 000 and 30 000 pixels in total
     training = training_cloud[:100000].append(training_not_cloud[:100000]).sort_values("id_GEE")
     evaluation = evaluation_cloud[:30000].append(evaluation_not_cloud[:30000]).sort_values("id_GEE")
+    
+    training['index'] = np.arange(training.shape[0])
+    evaluation['index'] = np.arange(evaluation.shape[0])
 
     return training, evaluation
 
