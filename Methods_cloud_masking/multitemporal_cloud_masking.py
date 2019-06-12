@@ -477,17 +477,7 @@ def ImagesWithCC(sentinel_img, start_date, end_date, region_of_interest=None, in
     return imgColl.map(lambda x: ComputeCloudCoverGeom(x, region_of_interest))
 """
 
-"""
-def NextImagesWithCC(sentinel_img, region_of_interest=None,
-                     REVISIT_DAY_PERIOD=15, NUMBER_IMAGES=30,
-                     include_img=False):
-    return ImagesWithCC(sentinel_img,
-                        ee.Date(sentinel_img.get("system:time_start")),
-                        ee.Date(ee.Number(sentinel_img.get("system:time_start")).add(
-                            REVISIT_DAY_PERIOD * NUMBER_IMAGES * 24 * 60 * 60 * 1000)),
-                        region_of_interest=region_of_interest,
-                        include_img=include_img)
-"""
+
 
 # LANDSAT8_BANDNAMES = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'BQA']
 

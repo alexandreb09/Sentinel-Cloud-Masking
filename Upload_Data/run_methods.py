@@ -132,7 +132,7 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod, geometry):
 #     return df
 
 
-def apply_all_methods_save(filename):
+def apply_all_methods_save(filename, sheetname):
     """
     Arguments:
         :param filename: filename to process
@@ -140,7 +140,7 @@ def apply_all_methods_save(filename):
     list_errors = []
 
     #  Read the excel file
-    df_total = pd.read_excel(filename, sheet_name = "Training")
+    df_total = pd.read_excel(filename, sheet_name = sheetname)
 
     # df_total["index"] = [i for i in range(df_total.shape[0])]
 
@@ -241,7 +241,7 @@ def apply_all_methods_save(filename):
             df_total = new_df.combine_first(df_total)
 
         # Save - export
-        export_df_to_excel(df_total, "Training", filename=filename)
+        export_df_to_excel(df_total, sheetname, filename=filename)
 
         print("*" * 50)
 
@@ -278,9 +278,9 @@ if __name__ == "__main__":
     # print(df_training)
     # df_res = apply_method_1_to_5(df_training, method_name)
 
-    file_name = "Data/results - JH.xlsx"
-    sheet_name = "Training"
-    apply_all_methods_save(file_name)
+    file_name = "Data/Evaluation.xlsx"
+    sheet_name = "Evaluation"
+    apply_all_methods_save(file_name, sheet_name)
 
     # import time
     # t1 = time.time()

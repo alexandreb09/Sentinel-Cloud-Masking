@@ -126,3 +126,24 @@ def export_df_train_eval_to_excel(df_training, df_evaluation , filename="Data/re
         df_training.to_excel(writer, sheet_name="Training", index=False)
         df_evaluation.to_excel(writer, sheet_name="Evaluation", index=False)
         writer.save()
+
+
+def mergeTrainingDataset():
+    df1 = pd.read_excel(
+        "./Data/results - JH.xlsx", "Training")
+    df2 = pd.read_excel(
+        "./Data/results - PC-ALEX.xlsx", "Training")
+
+    # Fusion
+    df = df1.append(df2)
+
+    # Remove 0 values
+    valid_pixels = (df == -1).any(axis=1)
+    df_invalid = df[valid_pixels]
+    df_valid = df[~valid_pixels]
+    
+    export_df_to_excel(df_valid, "Training", filename="Data/results.xlsx")
+    export_df_to_excel(df_invalid, "Invalids", filename="Data/results.xlsx")
+
+    print("nb pixels invalid: ", df_invalid.shape[0])
+    print("nb pixels valid: ", df_valid.shape[0])
