@@ -3,9 +3,6 @@ import pandas as pd
 import numpy as np
 import h5py
 import sys
-import ee
-
-ee.Initialize()
 
 
 def getDates(granule):
@@ -106,16 +103,17 @@ def export_df_to_excel(df, sheetname, filename="Data/results.xlsx"):
     Arguments:
         :param df: dataframe to export
     """
-    from openpyxl import load_workbook 
+    from openpyxl import load_workbook
     book = load_workbook(filename)
-    with pd.ExcelWriter(filename, engine = 'openpyxl') as writer:
+    with pd.ExcelWriter(filename, engine='openpyxl') as writer:
         writer.book = book
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
         # df.to_excel(writer, "Main", cols=['Diff1', 'Diff2'])
         df.to_excel(writer, sheet_name=sheetname, index=False)
         # writer.save()
 
-def export_df_train_eval_to_excel(df_training, df_evaluation , filename="Data/results.xlsx"):
+
+def export_df_train_eval_to_excel(df_training, df_evaluation, filename="Data/results.xlsx"):
     """
     Export the dataframe to excel in two sheets
     Arguments:
@@ -137,13 +135,30 @@ def mergeTrainingDataset():
     # Fusion
     df = df1.append(df2)
 
-    # Remove 0 values
+    # Split rows having -1 as values
     valid_pixels = (df == -1).any(axis=1)
     df_invalid = df[valid_pixels]
     df_valid = df[~valid_pixels]
-    
-    export_df_to_excel(df_valid, "Training", filename="Data/results.xlsx")
-    export_df_to_excel(df_invalid, "Invalids", filename="Data/results.xlsx")
 
     print("nb pixels invalid: ", df_invalid.shape[0])
     print("nb pixels valid: ", df_valid.shape[0])
+
+    export_df_to_excel(df_valid, "Training", filename="Data/results.xlsx")
+    export_df_to_excel(df_invalid, "Invalids_training",
+                       filename="Data/results.xlsx")
+
+
+def mergeEvalDataset():
+    df = pd.read_excel("./Data/Evaluation.xlsx", "Evaluation")
+
+    # Split rows having -1 as values
+    valid_pixels = (df == -1).any(axis=1)
+    df_invalid = df[valid_pixels]
+    df_valid = df[~valid_pixels]
+
+    print("nb pixels invalid: ", df_invalid.shape[0])
+    print("nb pixels valid: ", df_valid.shape[0])
+
+    export_df_to_excel(df_valid, "Evaluation", filename="Data/results.xlsx")
+    export_df_to_excel(df_invalid, "Invalids_evaluation",
+                       filename="Data/results.xlsx")
