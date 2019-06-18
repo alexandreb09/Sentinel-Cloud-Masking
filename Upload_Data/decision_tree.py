@@ -5,11 +5,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.linear_model import LogisticRegression
 
 import matplotlib.pyplot as plt
 from matplotlib.legend_handler import HandlerLine2D
 import seaborn as sns
-
+import pydot
 import time
 
 import os
@@ -17,6 +18,7 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 os.path.dirname(currentdir)
 
 sns.set()
+
 
 def add_row(df, row):
     df.loc[-1] = row
@@ -40,24 +42,28 @@ def load_file(filename, sheetname, show_time=True):
     return df
 
 
-def get_train_test_dataset(df_training, df_evaluation, show_time=True):
+def split_feature_output(df, show_time=True):
+    """ Split a dataset in feature dataset and output column
+    docstring here
+        :param df: dataframe to split
+        :param show_time=True: 
+    """
     # Méthod (e.g. X dataset)
-    cols_name_methods = df_training.columns[5:]
+    cols_name_methods = df.columns[5:]
 
     # Select feature - output
     t = time.time()
-    x_train = df_training[cols_name_methods].values
-    y_train = (df_training["cloud"] * 1).values
+    x = df[cols_name_methods].values
+    y = (df["cloud"] * 1).values
 
-    x_test = df_evaluation[cols_name_methods].values
-    y_test = (df_evaluation["cloud"] * 1).values
     if show_time:
         print("Train - test dataset created in %3.2fs" % (time.time() - t))
 
-    return x_train, x_test, y_train, y_test
+    return x, y
 
 
-def display_accuracy_over_nb_estimators(x_train, x_test, y_train, y_test, show_plot=True):
+def compute_accuracy_over_nb_estimators(x_train, x_test, y_train, y_test,
+                                        show_plot=True, progress_bar=True):
     times_fitting = []
     times_predict = []
     accuracies = []
@@ -66,8 +72,9 @@ def display_accuracy_over_nb_estimators(x_train, x_test, y_train, y_test, show_p
         + [i for i in range(10, 30, 2)] \
         + [i for i in range(30, 100, 5)] \
         + [i for i in range(100, 500, 10)] \
-
-    startProgress("Compute accuracy vs number of estimators")
+    
+    if progress_bar: startProgress("Compute accuracy vs number of estimators")
+    
     for i, n_estimators in enumerate(nb_estimators_list):
         # Training
         t = time.time()
@@ -87,44 +94,50 @@ def display_accuracy_over_nb_estimators(x_train, x_test, y_train, y_test, show_p
 
         accuracies.append(accuracy_score(y_test, y_pred))
 
-        progress(i/len(nb_estimators_list)*100)
+        if progress_bar: progress(i/len(nb_estimators_list)*100)
 
-    endProgress()
+    if progress_bar: endProgress()
 
     df = pd.DataFrame({"nb_estimators_list": nb_estimators_list,
                        "accuracies": accuracies,
                        "times_fitting": times_fitting,
                        "times_predict": times_predict})
 
-    print("Best accuracy:\n", df[df.accuracies == max(df.accuracies)])
+    # print("Best accuracy:\n", df[df.accuracies == max(df.accuracies)])
     #     nb_estimators_list  accuracies  times_fitting  times_predict
     # 18                  28     0.96645       0.428029       0.156244
 
-    print("Worst accuracy:\n", df[df.accuracies == min(df.accuracies)])
+    # print("Worst accuracy:\n", df[df.accuracies == min(df.accuracies)])
     #    nb_estimators_list  accuracies  times_fitting  times_predict
     # 0                   1    0.965231       0.292976       0.109385
 
     if show_plot:
-        fig = plt.figure()
-        ax1 = fig.add_subplot(211)
-        ax2 = fig.add_subplot(212)
-
-        sns.lineplot(x="nb_estimators_list", y="accuracies", data=df, ax=ax1)
-        sns.lineplot(x="nb_estimators_list",
-                     y="times_fitting", data=df, ax=ax2)
-        sns.lineplot(x="nb_estimators_list",
-                     y="times_predict", data=df, ax=ax2)
-        ax1.set_title("Accuracy over nb_estimators")
-        ax2.set_title("Time over nb_estimators")
-        ax2.legend(["times_fitting", "times_predict"], facecolor='w')
-
-        plt.tight_layout()
-        plt.show()
+        plot_accuracy_over_nb_estimatros(df)
 
     return df
 
+def plot_accuracy_over_nb_estimatros(df):
+    """ Plot the accuracy - time_splitting - time_evaluation over the nb_estimatros 
+    Arguments
+        :param df: dataframe with : [nb_estimators_list,times_fitting, times_predict]
+    """
+    fig = plt.figure()
+    ax1 = fig.add_subplot(211)
+    ax2 = fig.add_subplot(212)
 
-def plot_methods_prediction(res):
+    sns.lineplot(x="nb_estimators_list", y="accuracies", data=df, ax=ax1)
+    sns.lineplot(x="nb_estimators_list",
+                    y="times_fitting", data=df, ax=ax2)
+    sns.lineplot(x="nb_estimators_list",
+                    y="times_predict", data=df, ax=ax2)
+    ax1.set_title("Accuracy over nb_estimators")
+    ax2.set_title("Time over nb_estimators")
+    ax2.legend(["times_fitting", "times_predict"], facecolor='w')
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_accuracy_over_methods(res):
     # Sort by accuracy
     res = res.sort_values(by=["Accuracy"])
 
@@ -178,7 +191,6 @@ def random_forest_accuracy(res, x_train, y_train, x_test, y_test, n_estimators=2
     
 
 def linear_logistic_regression(res, x_train, y_train, x_test, y_test):
-    from sklearn.linear_model import LogisticRegression
     # Create model
     model = LogisticRegression()
     # Fit model
@@ -253,7 +265,7 @@ def number_tree_gain(x_test, y_test, x_train, y_train):
 
 
 
-if __name__ == "__main__":
+'''if __name__ == "__main__":
     df_training = load_file("./Data/results.xlsx", "Training")
     df_evaluation = load_file("./Data/results.xlsx", "Evaluation")
 
@@ -265,10 +277,10 @@ if __name__ == "__main__":
                         "Accuracy": [accuracy_score(df.cloud, df[col]) for col in df.columns[5:]]})
 
     # Creating feature - output dataset
-    x_train, x_test, y_train, y_test = get_train_test_dataset(df_evaluation, df_evaluation)
+    x_train, y_train = split_feature_output(df_evaluation)
+    x_test, y_test = split_feature_output(df_evaluation)
 
-    # display_accuracy_over_nb_estimators(
-    #     x_train, x_test, y_train, y_test, show_plot=True)
+    compute_accuracy_over_nb_estimators(x_train, x_test, y_train, y_test, show_plot=True)
 
     # Run random Forest
     res = random_forest_accuracy(res, x_train, y_train, x_test, y_test)
@@ -278,4 +290,5 @@ if __name__ == "__main__":
     linear_logistic_regression(res, x_train, y_train, x_test, y_test)
 
     print("Results:\n", res)
-    plot_methods_prediction(res)
+    plot_accuracy_over_methods(res)'''
+
