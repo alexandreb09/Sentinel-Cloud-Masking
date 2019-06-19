@@ -17,8 +17,12 @@ import os
 currentdir = os.path.dirname(os.path.realpath(__file__))
 os.path.dirname(currentdir)
 
-sns.set()
+# Bigger than normal fonts
+sns.set(font_scale=1.7)
 
+feature_names = ['percentile1', 'percentile2', 'percentile3', 'percentile4', 'percentile5',
+                 'persistence1', 'persistence2', 'persistence3', 'persistence4', 'persistence5',
+                 'tree1', 'tree2', 'tree3']
 
 def add_row(df, row):
     df.loc[-1] = row
@@ -48,12 +52,9 @@ def split_feature_output(df, show_time=True):
         :param df: dataframe to split
         :param show_time=True: 
     """
-    # Méthod (e.g. X dataset)
-    cols_name_methods = df.columns[5:]
-
     # Select feature - output
     t = time.time()
-    x = df[cols_name_methods].values
+    x = df[feature_names].values
     y = (df["cloud"] * 1).values
 
     if show_time:
@@ -153,6 +154,48 @@ def plot_accuracy_over_methods(res):
     plt.xticks(rotation = 45)
     plt.show()
 
+
+def plot_methods_repartition(data):
+    # Select feature + output columns
+    data = data[["cloud"] + feature_names]
+
+    # Figure size
+    plt.rcParams["figure.figsize"] = (20, 10)
+
+    # Count the number of 0 and 1
+    # Return a list = [sum of 0, sum of 1]
+    def get_sum(col):
+        return [sum(col == 0), sum(col == 1)]
+
+    # Compute the number of 0 and 1 per column + transformation for seaborn plot
+    res = data.apply(get_sum, axis=0).to_frame()
+    res = pd.DataFrame(res[0].values.tolist(), columns=[
+                    "Cloud", "Not cloud"], index=res.index).stack().to_frame()
+    res.reset_index(inplace=True)
+    res = res.set_axis(['Method', 'Cloud ?', 'Count'], axis=1, inplace=False)
+
+    # Create plot
+    sns.barplot(x="Method", y="Count", hue="Cloud ?", data=res).set_title(
+        'Distribution of prediction methods')
+    plt.xticks(rotation=30)
+
+    plt.show()
+
+
+def plot_accuracy_over_number_of_feature(x_train, y_train, x_test, n_estimators):
+    res = pd.DataFrame({"Number_of_features": [i for i in range(1, len(data.columns) + 1)],
+                        "Accuracy": [-1 for i in range(1, len(data.columns) + 1)]})
+    
+    for index, row in data.iterrows():
+        # Create Decision Tree classifer object
+        model_rf = RandomForestClassifier(
+            n_estimators=n_estimators, random_state=0)
+        # Fit model
+        model_rf.fit(x_train, y_train)
+        # Predict the response for test dataset
+        y_pred = model_rf.predict(x_test)
+
+        accuracy = accuracy_score(y_test, y_pred)
 
 def decision_tree_accuracy(res, x_train, y_train, x_test, y_test):
     # Create Decision Tree classifer object
