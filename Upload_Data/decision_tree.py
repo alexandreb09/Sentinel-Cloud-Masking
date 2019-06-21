@@ -1,4 +1,4 @@
-from utils import startProgress, progress, endProgress
+from utils import startProgress, progress, endProgress, add_row
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -23,11 +23,6 @@ sns.set(font_scale=1.7)
 feature_names = ['percentile1', 'percentile2', 'percentile3', 'percentile4', 'percentile5',
                  'persistence1', 'persistence2', 'persistence3', 'persistence4', 'persistence5',
                  'tree1', 'tree2', 'tree3']
-
-def add_row(df, row):
-    df.loc[-1] = row
-    df.index = df.index + 1  
-    return df.sort_index()
 
 
 def load_file(filename, sheetname, show_time=True):
@@ -182,20 +177,35 @@ def plot_methods_repartition(data):
     plt.show()
 
 
-def plot_accuracy_over_number_of_feature(x_train, y_train, x_test, n_estimators):
-    res = pd.DataFrame({"Number_of_features": [i for i in range(1, len(data.columns) + 1)],
-                        "Accuracy": [-1 for i in range(1, len(data.columns) + 1)]})
+def accuracy_over_number_of_feature(training, evaluation, n_estimators):
+    """ Compute the accuracy by decreasing the number of feature column
+     (removing the less important feature at each iteration)
+    docstring here
+        :param training: 
+        :param evaluation: 
+        :param n_estimators: 
+    """
+    res = pd.DataFrame({"Number_of_features": [i for i in range(len(feature_names), 0, -1)],
+                        "Accuracy": [-1 for i in range(len(feature_names), 0 , -1)]})
     
-    for index, row in data.iterrows():
-        # Create Decision Tree classifer object
-        model_rf = RandomForestClassifier(
-            n_estimators=n_estimators, random_state=0)
-        # Fit model
-        model_rf.fit(x_train, y_train)
-        # Predict the response for test dataset
-        y_pred = model_rf.predict(x_test)
+    feat_col = feature_names.copy()
 
-        accuracy = accuracy_score(y_test, y_pred)
+    for nb_features in res.Number_of_features:
+        # Create Decision Tree classifer object
+        model_rf = RandomForestClassifier(n_estimators=n_estimators, random_state=0)
+        # Fit model
+        model_rf.fit(training[feat_col], training.cloud)
+        # Predict the response for test dataset
+        y_pred = model_rf.predict(evaluation[feat_col])
+
+        # Compute accuracy
+        accuracy = accuracy_score(evaluation.cloud, y_pred)
+        res.loc[res.Number_of_features == nb_features, 'Accuracy'] = accuracy
+
+        # Remove less important variables
+        del feat_col[np.argmin(model_rf.feature_importances_)]
+
+    return res
 
 def decision_tree_accuracy(res, x_train, y_train, x_test, y_test):
     # Create Decision Tree classifer object
@@ -308,7 +318,8 @@ def number_tree_gain(x_test, y_test, x_train, y_train):
 
 
 
-'''if __name__ == "__main__":
+'''
+if __name__ == "__main__":
     df_training = load_file("./Data/results.xlsx", "Training")
     df_evaluation = load_file("./Data/results.xlsx", "Evaluation")
 
@@ -333,5 +344,6 @@ def number_tree_gain(x_test, y_test, x_train, y_train):
     linear_logistic_regression(res, x_train, y_train, x_test, y_test)
 
     print("Results:\n", res)
-    plot_accuracy_over_methods(res)'''
+    plot_accuracy_over_methods(res)
+'''
 

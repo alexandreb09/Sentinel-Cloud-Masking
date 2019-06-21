@@ -6,6 +6,22 @@ import sys
 
 
 def getDates(granule):
+    """ Read a Sentinel image ID and extract the beginning and finishing date
+    Arguments:
+        :param granule: Sentinel Image ID
+    """
+
+    def format_date(date):
+        """
+        Convert "YYYYMMJJ" to "YYYY-MM-JJ"
+            :param date: string date of format "YYYYMMJJ"
+        """
+        return datetime.strptime(date, "%Y%m%d").strftime("%Y-%m-%d")
+
+
+    def add_one_day(date):
+        return datetime.strptime(date, "%Y-%m-%d") + timedelta(days=1)
+
     details = granule.split("_")
     date_fin = format_date(details[5][:8])
     date_deb1 = format_date(details[7][1:9])
@@ -18,24 +34,24 @@ def getDates(granule):
     return date_deb, date_fin
 
 
-def format_date(date):
+def add_row(df, row):
+    """ Add a row at the end of the dataframe
+    Arguments
+        :param df: dataframe
+        :param row: row to add
     """
-    Convert "YYYYMMJJ" to "YYYY-MM-JJ"
-        :param date: string date of format "YYYYMMJJ"
-    """
-    return datetime.strptime(date, "%Y%m%d").strftime("%Y-%m-%d")
+    df.loc[-1] = row
+    df.index = df.index + 1
+    return df.sort_index()
 
 
-def add_one_day(date):
-    return datetime.strptime(date, "%Y-%m-%d") + timedelta(days=1)
 
-
-def startProgress(title, i=1):
+# Progress bar
+def startProgress(title):
     global progress_x
     sys.stdout.write(title + ": [" + "-" * 50 + "]" + chr(8) * 51)
     sys.stdout.flush()
     progress_x = 0
-
 
 def progress(x):
     global progress_x
@@ -44,35 +60,20 @@ def progress(x):
     sys.stdout.flush()
     progress_x = x
 
-
 def endProgress():
     sys.stdout.write("#" * (50 - progress_x) + "]\n")
     sys.stdout.flush()
 
 
-def unzipFile(source):
-    """
-    Arguments:
-        :param source: file.gz name to uncompress
-    """
-    import gzip
-
-    input = gzip.GzipFile(source, 'rb')
-    s = input.read()
-    input.close()
-
-    output = open(source[:-3], 'wb')
-    output.write(s)
-    output.close()
-
-    print("Fichier enregistré !")
 
 
-def splitH5File(filename):
+def splitH5File(filename, output_f1="new_file_part1.h5", output_f2="new_file_part2.h5"):
     """
     Split the .h5 file in two files (same size)
     Argument: filename
-        param filename: 
+        param filename: file name
+        :param output_f1="new_file_part1.h5": 
+        :param output_f2="new_file_part2.h5": 
     """
     with h5py.File(filename, 'r') as f_old:
         nb_rows = f_old["longitude"].shape[0]
@@ -82,14 +83,14 @@ def splitH5File(filename):
         key_copy_part = ['latitude', 'longitude', 'granule_id', 'product_id',
                          'classes']
 
-        with h5py.File("new_file_part1.h5", 'w') as f_new:
+        with h5py.File(output_f1, 'w') as f_new:
             for key in keys:
                 if key in key_copy_all:
                     f_new.create_dataset(key, data=f_old[key])
                 elif key in key_copy_part:
                     f_new.create_dataset(key, data=f_old[key][:nb_rows//2])
 
-        with h5py.File("new_file_part2.h5", 'w') as f_new:
+        with h5py.File(output_f2, 'w') as f_new:
             for key in keys:
                 if key in key_copy_all:
                     f_new.create_dataset(key, data=f_old[key])
@@ -99,25 +100,27 @@ def splitH5File(filename):
 
 def export_df_to_excel(df, sheetname, filename="Data/results.xlsx"):
     """
-    Export the dataframe to excel in two sheets
+    Export the dataframe to excel in a specific sheet
     Arguments:
-        :param df: dataframe to export
+        :param df: 
+        :param sheetname: 
+        :param filename="Data/results.xlsx": 
     """
     from openpyxl import load_workbook
     book = load_workbook(filename)
     with pd.ExcelWriter(filename, engine='openpyxl') as writer:
         writer.book = book
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
-        # df.to_excel(writer, "Main", cols=['Diff1', 'Diff2'])
         df.to_excel(writer, sheet_name=sheetname, index=False)
-        # writer.save()
 
 
 def export_df_train_eval_to_excel(df_training, df_evaluation, filename="Data/results.xlsx"):
     """
     Export the dataframe to excel in two sheets
     Arguments:
-        :param df: dataframe to export
+        :param df_training: Training dataframe
+        :param df_evaluation: Evaluation dataframe
+        :param filename="Data/results.xlsx": output excel file name
     """
     import xlsxwriter
     with pd.ExcelWriter(filename, engine='xlsxwriter') as writer:
@@ -160,5 +163,14 @@ def mergeEvalDataset():
     print("nb pixels valid: ", df_valid.shape[0])
 
     export_df_to_excel(df_valid, "Evaluation", filename="Data/results.xlsx")
-    export_df_to_excel(df_invalid, "Invalids_evaluation",
-                       filename="Data/results.xlsx")
+    export_df_to_excel(df_invalid, "Invalids_evaluation", filename="Data/results.xlsx")
+
+
+def deletefile(filename):
+    """ Delete the current file if existing
+    Arguments
+        :param filename: file to delete
+    """
+    import os
+    if os.path.exists(filename):    # If file existing
+        os.remove(filename)         # Delete file
