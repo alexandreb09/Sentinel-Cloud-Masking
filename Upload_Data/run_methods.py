@@ -263,9 +263,9 @@ def find_problematic_pictures(filename):
         region_of_interest = getGeometryImage(image)
 
         cloud_score_image = CloudClusterScore(image,
-                                                    region_of_interest,
-                                                    method_number=1,
-                                                    method_pred="persistence")[0]
+                                                region_of_interest,
+                                                method_number=1,
+                                                method_pred="persistence")[0]
         try:
             cloud_score_image.getInfo()
         except ee.ee_exception.EEException:

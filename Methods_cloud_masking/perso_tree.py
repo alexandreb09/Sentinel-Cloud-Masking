@@ -33,9 +33,7 @@ def getMaskTree1(image):
         '( (b("B3") > 0.325) && (b("B11") > 0.267) && (b("B7") < 1.544)) ? 1 : 0'
     )
     # full criteria = Clouds + Cirrus
-    new_band = expr1.Or(expr2.Or(expr3))
-    image = image.addBands(new_band).select(["constant"])
-    return new_band
+    return expr1.Or(expr2.Or(expr3)).select(["constant"], ["tree1"])
 
 
 ####################################
@@ -53,11 +51,11 @@ def getMaskTree2(image):
         '( (b("B8A") > 0.156) && (b("B3") > 0.333) && (b("B6")/b("B11") < 4.292)) ? 1 : 0'
     )
     # full criteria = Clouds + Cirrus
-    return expr1.Or(expr2)
+    return expr1.Or(expr2).select(["constant"], ["tree2"])
 
 
 ####################################
-# Compute Decision Tree filter 2   #
+# Compute Decision Tree filter 3   #
 ####################################
 def getMaskTree3(image):
     image_normalized = normalizedImage(image)
@@ -87,4 +85,4 @@ def getMaskTree3(image):
     )
 
     # full criteria = Clouds + Cirrus
-    return expr1.Or(expr2.Or(expr3.Or(expr4.Or(expr5))))
+    return expr1.Or(expr2.Or(expr3.Or(expr4.Or(expr5)))).select(["constant"], ["tree3"])

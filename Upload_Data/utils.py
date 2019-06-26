@@ -1,3 +1,4 @@
+import ee
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
@@ -18,7 +19,6 @@ def getDates(granule):
         """
         return datetime.strptime(date, "%Y%m%d").strftime("%Y-%m-%d")
 
-
     def add_one_day(date):
         return datetime.strptime(date, "%Y-%m-%d") + timedelta(days=1)
 
@@ -34,6 +34,20 @@ def getDates(granule):
     return date_deb, date_fin
 
 
+def addBands(image, band, new_band_name, old_band_name='constant'):
+    """ Add a band to an image
+        Rename the first band name matching to the "old_band_name" by the new name
+    Arguments:
+        :param image: Image to add bands
+        :param band: Band to add
+        :param new_band_name: Name for the band to add
+        :param old_band_name='constant': default name 
+    """
+    image = image.addBands(band)
+    new_band_names = image.bandNames().replace(old_band_name, new_band_name)
+    return image.select(image.bandNames(), new_band_names)
+
+
 def add_row(df, row):
     """ Add a row at the end of the dataframe
     Arguments
@@ -45,13 +59,13 @@ def add_row(df, row):
     return df.sort_index()
 
 
-
 # Progress bar
 def startProgress(title):
     global progress_x
     sys.stdout.write(title + ": [" + "-" * 50 + "]" + chr(8) * 51)
     sys.stdout.flush()
     progress_x = 0
+
 
 def progress(x):
     global progress_x
@@ -60,11 +74,10 @@ def progress(x):
     sys.stdout.flush()
     progress_x = x
 
+
 def endProgress():
     sys.stdout.write("#" * (50 - progress_x) + "]\n")
     sys.stdout.flush()
-
-
 
 
 def splitH5File(filename, output_f1="new_file_part1.h5", output_f2="new_file_part2.h5"):
@@ -163,7 +176,8 @@ def mergeEvalDataset():
     print("nb pixels valid: ", df_valid.shape[0])
 
     export_df_to_excel(df_valid, "Evaluation", filename="Data/results.xlsx")
-    export_df_to_excel(df_invalid, "Invalids_evaluation", filename="Data/results.xlsx")
+    export_df_to_excel(df_invalid, "Invalids_evaluation",
+                       filename="Data/results.xlsx")
 
 
 def deletefile(filename):

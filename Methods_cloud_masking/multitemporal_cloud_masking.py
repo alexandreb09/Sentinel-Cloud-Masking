@@ -660,5 +660,6 @@ def CloudClusterScore(img, region_of_interest,
                                 bands_thresholds=params["bands_thresholds"],
                                 growing_ratio=params["growing_ratio"],
                                 n_clusters=params["n_clusters"])
-
+    # Rename the band name
+    clusterscore = clusterscore.select([clusterscore.bandNames().get(0)], [method_pred+str(method_number)])
     return clusterscore, img_forecast
