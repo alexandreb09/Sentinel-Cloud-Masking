@@ -1,10 +1,13 @@
+import plotly.graph_objs as go
+from plotly.offline import iplot
+from plotly import tools
 from utils import startProgress, progress, endProgress, add_row
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, auc
 from sklearn.linear_model import LogisticRegression
 
 import matplotlib.pyplot as plt
@@ -382,20 +385,87 @@ def plot_precision_recall_vs_threshold(precisions, recalls, thresholds):
     plt.legend(loc='best')
 
 
-def plot_roc_curve(fpr, tpr, label=None):
+def plot_roc_curve(fpr, tpr, auc_thresholds, label=None):
     """
     The ROC curve, modified from 
     Hands-On Machine learning with Scikit-Learn and TensorFlow; p.91
     """
-    plt.figure(figsize=(8, 8))
-    plt.title('ROC Curve')
-    plt.plot(fpr, tpr, linewidth=2, label=label)
-    plt.plot([0, 1], [0, 1], 'k--')
+    from sklearn.metrics import auc
+
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(15, 10))
+    # Plot 1
+    plot_tpr, = ax[0].plot(auc_thresholds, tpr)
+    plot_fpr, = ax[0].plot(auc_thresholds, fpr)
+    ax[0].title.set_text("FPS vs TPR (Sensitivity)")
+    ax[0].legend([plot_tpr, plot_fpr], ["TPR", "FPR"], loc='best')
+    ax[0].set_xlabel("Threshold")
+    ax[0].set_ylabel("Rate")
+    ax[0].axis([-0.05, 1.05, -0.05, 1.05])
+    
+    # Plot 2
+    ax[1].title.set_text('ROC Curve\n AUC: {:06.4f}'.format(auc(fpr, tpr)))
+    ax[1].plot(fpr, tpr, linewidth=2, label=label)
+    ax[1].plot([0, 1], [0, 1], 'k--')
     plt.axis([-0.005, 1, 0, 1.005])
-    plt.xticks(np.arange(0, 1, 0.05), rotation=90)
-    plt.xlabel("False Positive Rate")
+    plt.sca(ax[1])
+    plt.xticks(np.arange(0, 1, 0.1), rotation=90)
     plt.ylabel("True Positive Rate (Recall)")
+    plt.xlabel("False Positive Rate")
     plt.legend(loc='best')
+
+
+def plotly_roc_curve(fpr, tpr, auc_thresholds):
+    # Create traces
+    trace0 = go.Scatter(
+        x=auc_thresholds,
+        y=tpr,
+        mode='lines+markers',
+        name='TPR',
+    )
+    trace1 = go.Scatter(
+        x=auc_thresholds,
+        y=fpr,
+        mode='lines+markers',
+        name='FPR',
+        xaxis='x1',
+        yaxis='y1'
+    )
+    trace2 = go.Scatter(
+        x=fpr,
+        y=tpr,
+        text=["Threshold: {: 06.4f}".format(t) for t in auc_thresholds],
+        mode='lines+markers',
+        name='FPR',
+        xaxis='x2',
+        yaxis='y2'
+    )
+    trace3 = go.Scatter(
+        x=[0,1],
+        y=[0,1],
+        line=dict(
+            color=('rgb(22, 96, 167)'),
+            width=4,
+            dash='dot'),
+        showlegend=False
+    )
+
+    fig = tools.make_subplots(rows=1, cols=2, subplot_titles=('FPS vs TPR (Sensitivity)',
+                                                            'ROC Curve <br> AUC: {:06.4f}'.format(auc(fpr, tpr))))
+
+    fig.append_trace(trace0, 1, 1)
+    fig.append_trace(trace1, 1, 1)
+    fig.append_trace(trace2, 1, 2)
+    fig.append_trace(trace3, 1, 2)
+
+    fig['layout'].update(height=600, width=800)
+    fig['layout']['xaxis1'].update(title='Threshold', range=[0, 1.05])
+    fig['layout']['yaxis1'].update(title='Rate')
+    fig['layout']['xaxis2'].update(title='False Positive Rate', range=[0, 1.05])
+    fig['layout']['yaxis2'].update(title='True Positive Rate (Recall)')
+
+    iplot(fig)
+
+
 '''
 if __name__ == "__main__":
     df_training = load_file("./Data/results.xlsx", "Training")
