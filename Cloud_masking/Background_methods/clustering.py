@@ -86,7 +86,8 @@ def ClusterClouds(image,
                   bands_thresholds=["B2", "B3", "B4"],
                   growing_ratio=2,
                   n_clusters=10, region_of_interest=None,
-                  tileScale=PARAMS_CLOUDCLUSTERSCORE_DEFAULT['tileScale']):
+                  tileScale=PARAMS_CLOUDCLUSTERSCORE_DEFAULT['tileScale'],
+                  band_name= None):
     """
     Function that compute the cloud score given the differences between the real and predicted image.
 
@@ -102,6 +103,7 @@ def ClusterClouds(image,
     :param n_clusters: number of clusters
     :param numPixels:  to be considered by the clustering algorithm
     :param region_of_interest:  region of interest within the image
+    :param band_name: name of output band (optional)
     :return: ee.Image with 0 for clear pixels, 1 for shadow pixels and 2 for cloudy pixels
     """
 
@@ -162,4 +164,8 @@ def ClusterClouds(image,
     cloud_score_threshold = cloud_score_threshold.focal_min(kernel=kernel).\
         focal_max(kernel=kernel)
 
+    # Rename band name
+    if band_name:
+        cloud_score_threshold = cloud_score_threshold.select(
+            [cloud_score_threshold.bandNames().get(0)], [band_name])
     return cloud_score_threshold

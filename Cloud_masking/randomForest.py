@@ -9,20 +9,20 @@ sys.path.append(os.path.join(BASE_DIR, 'Background_methods'))
 sys.path.append(os.path.join(BASE_DIR, 'Utils'))
 
 
-from Utils.utils import getGeometryImage
+from Utils.utils import getGeometryImage, get_name_collection
 from Tree_methods.tree_methods import getMaskTree1, getMaskTree2, getMaskTree3
 from Background_methods.multitemporal_cloud_masking import CloudClusterScore
+from parameters import NUMBER_TREES, CUTTOF
 
 ee.Initialize()
 
 
-def computeCloudMasking(image_name, numberOfTrees=100, threshold=0.5, asset_id="default"):
+def computeCloudMasking(image_name, numberOfTrees=NUMBER_TREES, threshold=CUTTOF):
     """ Compute the Cloud masking 
     Arguments:
         :param image_name: string image name
-        :param numberOfTrees=100: Size of forest in randomForest model
-        :param threshold=0.5: RandomForest model cuttof
-        :param asset_id="default": Default asset id 
+        :param numberOfTrees=NUMBER_TREE: Size of forest in randomForest model
+        :param threshold=CUTTOF: RandomForest model cuttof
     """
 
     # Import training data as GEE object
@@ -30,7 +30,7 @@ def computeCloudMasking(image_name, numberOfTrees=100, threshold=0.5, asset_id="
         'ft:1XzZPz8HZMARKQ9OPTWvfuRkPaGIASzkRYMfhKT8H')
 
     # Use these methods for prediction.
-    methods_name = ee.List(['percentile1', 'percentile5', 'tree2', 'tree3'])
+    methods_name = ee.List(['percentile1', 'percentile5', 'tree2', 'tree3'])  #
 
     # Random Forest model
     randomForest = ee.Classifier.randomForest(numberOfTrees=numberOfTrees)
@@ -39,34 +39,41 @@ def computeCloudMasking(image_name, numberOfTrees=100, threshold=0.5, asset_id="
     # Image + region of interest
     image = ee.Image(image_name)
     roi = getGeometryImage(image)
-    print(image.bandNames().getInfo())
-    print(roi.getInfo())
 
     # Apply the different methods
-    tree1 = getMaskTree1(image, roi)
+    # tree1 = getMaskTree1(image, roi)
     tree2 = getMaskTree2(image, roi)
     tree3 = getMaskTree3(image, roi)
-
-    percentile1 = CloudClusterScore(image, roi, method_number=1)[0]
-    percentile5 = CloudClusterScore(image, roi, method_number=5)[0]
+    percentile1, percentile5 = CloudClusterScore(image, roi)
 
     # Add each result as a band of the final image
-    final_image = tree3.addBands([tree1, tree2, percentile1, percentile5])
+    final_image = tree3.addBands([tree2, percentile1, percentile5])
 
     # Apply the random Forest classification
     masked_image = final_image.classify(randomForest).gt(threshold)
 
-    export_image(masked_image, roi, name)
-
     return masked_image
 
-def export_image(image, roi=None, name= None):
-    if roi == None: roi = getGeometryImage(image)
-    if name == None: name = image.id().getInfo()
-    assetId = ee.String("users/ab43536/test_imgCol/").cat(name)
+
+def export_image(image, asset_id="users/ab43536/", roi=None, name=None, num=None, total=None):
+    """ Export one image to asset
+    Arguments
+        :param image: image to export
+        :param roi=None:  specify the roi, default compute from image dimension
+        :param name=None: name of the image
+    """
+    if roi == None:
+        roi = getGeometryImage(image)
+    if name == None:
+        name = image.id().getInfo()
+    description = "Default export"
+    if num != None and total != None:
+        description = "Image {} on {} equal {:05.2f} pourcent".format(num, total, num / total * 100)
+    # print(description)
+    assetId = asset_id + name
     # Create a task : export the result as image asset
     task = ee.batch.Export.image.toAsset(image=image.clip(roi),
-                                         description="export image collection",
+                                         description=description,
                                          assetId=assetId,
                                          scale=30,
                                          region=roi.coordinates().getInfo(),
@@ -75,75 +82,35 @@ def export_image(image, roi=None, name= None):
 
 
 
-
-def toAsset(imageCol, assetPath, scale=30,
-            verbose=False, **kwargs):
-    """ Upload all images from one collection to a Earth Engine Asset.
-    You can use the same arguments as the original function ee.batch.export.image.toDrive
-    Arguments:
-        :param imageCol: Collection to upload
-        :type imageCol: ee.ImageCollection
-        :param assetPath: path of the asset where images will go
-        :type assetPath: str
-        :param scale: scale of the image (side of one pixel). Defults to 30
-            (Landsat resolution)
-        :type scale: int
-        :return: list of tasks
-        :rtype: list
-    """
-
-    # size = imageCol.size().getInfo()
-    alist = imageCol.toList(imageCol.size())
-    tasklist = []
-
-    for idx in range(0, 2):
-        img = ee.Image(alist.get(idx))
-
-        image_id = img.id().getInfo()
-        assetId = "users/ab43536/mask_5_methods_collection/" + image_id
-        
-        region = getGeometryImage(img)
-
-        task = ee.batch.Export.image.toAsset(image=img.clip(region),
-                                             assetId="users/ab43536/mask_5_methods_collection/" + image_id,
-                                             description=image_id.getInfo(),
-                                             region=region.coordinates().getInfo(),
-                                             scale=scale, **kwargs)
-        task.start()
-        tasklist.append(task)
-
-        if verbose:
-            print('Exporting {} to {}'.format(img.id(), assetId))
-
-    return tasklist
+date_start = "2018-01-01"
+date_end = "2018-12-31"
+geometry = ee.Geometry.Polygon(
+        [[[-1.5005188188386, 60.863047140476894],
+          [-5.2798156938386, 58.92387273299673],
+          [-8.0923156938386, 58.143979050956126],
+          [-11.2563781938386, 53.4055338391001],
+          [-10.7290344438386, 51.53191367679566],
+          [-5.8071594438386, 49.63483372807331],
+          [1.0483093061614, 50.537100502005416],
+          [2.4545593061614, 52.34466616042596],
+          [-0.9731750688386, 56.724942443535866],
+          [-0.6216125688386, 60.648360105306814]]])
 
 
-# computeCloudMasking("COPERNICUS/S2/20180602T113321_20180602T113333_T30VVJ")
+col = ee.ImageCollection("COPERNICUS/S2") \
+        .filterDate(date_start, date_end) \
+        .filterBounds(geometry)
 
-images_names = [
-    'COPERNICUS/S2/20180602T113321_20180602T113333_T30VVJ',
-    'COPERNICUS/S2/20180205T114351_20180205T114345_T30VUK',
-    'COPERNICUS/S2/20180617T113319_20180617T113317_T30UVG',
-    'COPERNICUS/S2/20180610T114349_20180610T114347_T30VUJ',
-    'COPERNICUS/S2/20180116T114421_20180116T114418_T30VVH',
-    'COPERNICUS/S2/20180225T105019_20180225T105018_T31TDJ',  # Toulouse
-]
+image_names = get_name_collection(col).getInfo()
+total = len(image_names)
 
+folder = "users/ab43536/masks_4_methods"
+if folder not in [elt["id"] for elt in ee.data.getList({"id": "users/ab43536"})]:
+    ee.data.createAsset({'type': "ImageCollection"}, folder)
 
-image_collection = ee.ImageCollection("COPERNICUS/S2").limit(2)
-
-for name in images_names[1]:
-    computeCloudMasking(ee.Image())
-
-# image_collection_mask = image_collection.map(computeCloudMasking)
-
-# for key, image_name in IMAGE_NAMES.items():
-#     image_collection.merge(ee.ImageCollection(
-#         computeCloudMasking(image_name, threshold=0.29, asset_id=key).clip(roi)))
-
-
-# Create a task : export the result as image asset
-# batch.imagecollection.toAsset(image_collection_mask,
-#                      assetPath='users/ab43536/test',
-#                     scale=30,
-#                     )
+for i, name in enumerate(image_names):
+    print("{:4d}/{} = {:05.2f}%   Image {}".format(i, total, i / total * 100, name))
+    mask = computeCloudMasking(name)
+    mask = mask.set('number', i)
+    export_image(mask, folder, getGeometryImage(ee.Image(name)),
+                 name.split('/')[-1], num=i, total=total)

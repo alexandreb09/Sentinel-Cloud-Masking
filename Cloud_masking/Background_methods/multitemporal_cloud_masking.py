@@ -15,13 +15,13 @@ from clustering import ClusterClouds
 
 
 
-def SelectBackgroundImages(sentinel_img, methodNumber, number_of_images,
+def SelectBackgroundImages(sentinel_img, number_of_images,
                             number_preselect, region_of_interest):
-    """ Return the NUMBER_IMAGES previous images with cloud cover
+    """ Return the NUMBER_IMAGES previous images with cloud cover for 
+        percentile 1 and 5 methods
 
     Arguments
         :param sentinel_img: 
-        :param methodNumber: 
         :param number_of_images: 
         :param number_preselect: 
         :param region_of_interest: 
@@ -42,14 +42,8 @@ def SelectBackgroundImages(sentinel_img, methodNumber, number_of_images,
     sentinel_collection = filter_partial_tiles(sentinel_collection, sentinel_img, region_of_interest)
 
     # Background selection according to the method number
-    if methodNumber == 1:
-        imgColl = method1(sentinel_img, sentinel_collection, number_of_images)
-    elif methodNumber == 5:
-        imgColl = method5(sentinel_img, sentinel_collection, number_of_images, number_preselect)
-    else:
-        raise NotImplementedError(
-            "Method %s is not implemented. Please chose eathier the 1 or 5 methods" % methodNumber)
-
+    imgColl_percentile1 = method1(sentinel_img, sentinel_collection, number_of_images)
+    imgColl_percentile5 = method5(sentinel_img, sentinel_collection, number_of_images, number_preselect)
 
     # Get rid of images with many invalid values
     def _count_valid(img):
@@ -63,8 +57,10 @@ def SelectBackgroundImages(sentinel_img, methodNumber, number_of_images,
 
         img = img.set("valids", dictio.get("all"))
         return img
-
-    return imgColl.map(_count_valid).sort("valids").limit(number_of_images)
+    imgColl_percentile1 = imgColl_percentile1.map(_count_valid).sort("valids").limit(number_of_images)
+    imgColl_percentile5 = imgColl_percentile5.map(_count_valid).sort("valids").limit(number_of_images)
+    
+    return imgColl_percentile1, imgColl_percentile5
 
 
 def SelectImagesTraining(sentinel_img, imgColl, number_of_images):
@@ -94,7 +90,7 @@ def SelectImagesTraining(sentinel_img, imgColl, number_of_images):
     return sentinel_img
 
 
-def CloudClusterScore(img, region_of_interest, method_number,
+def CloudClusterScore(img, region_of_interest,
                       number_of_images=PARAMS_SELECTBACKGROUND_DEFAULT['number_of_images'],
                       number_preselect=PARAMS_SELECTBACKGROUND_DEFAULT['number_preselect']
                       ):
@@ -103,7 +99,6 @@ def CloudClusterScore(img, region_of_interest, method_number,
     Params are defined in parameters.py file
         :param img: 
         :param region_of_interest: 
-        :param method_number=PARAMS_SELECTBACKGROUND_DEFAULT['method_number']: 
         :param number_of_images=PARAMS_SELECTBACKGROUND_DEFAULT['number_of_images']: 
         :param number_preselect=PARAMS_SELECTBACKGROUND_DEFAULT['number_preselect']: 
         :return:  cloud mask (1: cloud, 0: clear)
@@ -115,38 +110,51 @@ def CloudClusterScore(img, region_of_interest, method_number,
     forecast_bands_sentinel2 = [i + "_forecast" for i in SENTINEL2_BANDNAMES]
 
     # Select background image in one image                  
-    imgColl = SelectBackgroundImages(img,
-                                     method_number,
+    imgColl_p1, imgColl_p5 = SelectBackgroundImages(img,
                                      number_of_images,
                                      number_preselect,
                                      region_of_interest)
     
     # Summarize BackGround images in one band
-    image_with_lags = SelectImagesTraining(img, imgColl, number_of_images)
+    image_with_lags_p1 = SelectImagesTraining(img, imgColl_p1, number_of_images)
+    image_with_lags_p5 = SelectImagesTraining(img, imgColl_p5, number_of_images)
 
-    if method_number in [1,5]:
-        # Compute percentile aggregation
-        img_percentile = imgColl.reduce(reducer=ee.Reducer.percentile(percentiles=[50]))
+    # Compute percentile aggregation
+    img_percentile1 = imgColl_p1.reduce(reducer=ee.Reducer.percentile(percentiles=[50]))
+    img_percentile5 = imgColl_p5.reduce(reducer=ee.Reducer.percentile(percentiles=[50]))
 
-        reflectance_bands_sentinel2_perc50 = [i + "_p50" for i in SENTINEL2_BANDNAMES]
-        img_forecast = img_percentile.select(reflectance_bands_sentinel2_perc50,
-                                        forecast_bands_sentinel2)
-    else:
-        raise NotImplementedError("Method %s is not implemented. Please chose eathier the 1 or 5 methods" % method_pred)
+    reflectance_bands_sentinel2_perc50 = [i + "_p50" for i in SENTINEL2_BANDNAMES]
+    
+    img_forecast_p1 = img_percentile1.select(reflectance_bands_sentinel2_perc50,
+                                    forecast_bands_sentinel2)
+    img_forecast_p5 = img_percentile5.select(reflectance_bands_sentinel2_perc50,
+                                    forecast_bands_sentinel2)
 
+    clusterscore_percentile1 = ClusterClouds(image_with_lags_p1.select(SENTINEL2_BANDNAMES),
+                                        img_forecast_p1.select(forecast_bands_sentinel2),
+                                        region_of_interest=region_of_interest,
+                                        threshold_dif_cloud=params["threshold_dif_cloud"],
+                                        do_clustering=params["do_clustering"],
+                                        threshold_reflectance=params["threshold_reflectance"],
+                                        numPixels=params["numPixels"],
+                                        bands_thresholds=params["bands_thresholds"],
+                                        growing_ratio=params["growing_ratio"],
+                                        n_clusters = params["n_clusters"],
+                                        band_name="percentile1") \
+                                    .gte(CUTTOF)
 
-    clusterscore = ClusterClouds(image_with_lags.select(SENTINEL2_BANDNAMES),
-                                 img_forecast.select(forecast_bands_sentinel2),
-                                region_of_interest=region_of_interest,
-                                threshold_dif_cloud=params["threshold_dif_cloud"],
-                                do_clustering=params["do_clustering"],
-                                threshold_reflectance=params["threshold_reflectance"],
-                                numPixels=params["numPixels"],
-                                bands_thresholds=params["bands_thresholds"],
-                                growing_ratio=params["growing_ratio"],
-                                n_clusters=params["n_clusters"])
-
-    # Rename the band name
-    clusterscore = clusterscore.select([clusterscore.bandNames().get(0)], ["percentile"+str(method_number)])
-    return clusterscore.gte(CUTTOF), img_forecast
+    clusterscore_percentile5 = ClusterClouds(image_with_lags_p5.select(SENTINEL2_BANDNAMES),
+                                        img_forecast_p5.select(forecast_bands_sentinel2),
+                                        region_of_interest=region_of_interest,
+                                        threshold_dif_cloud=params["threshold_dif_cloud"],
+                                        do_clustering=params["do_clustering"],
+                                        threshold_reflectance=params["threshold_reflectance"],
+                                        numPixels=params["numPixels"],
+                                        bands_thresholds=params["bands_thresholds"],
+                                        growing_ratio=params["growing_ratio"],
+                                        n_clusters = params["n_clusters"],
+                                        band_name="percentile5") \
+                                    .gte(CUTTOF)
+    
+    return clusterscore_percentile1, clusterscore_percentile5
 

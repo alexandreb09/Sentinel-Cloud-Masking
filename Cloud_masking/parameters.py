@@ -16,11 +16,17 @@ COEF_NORMALISATION: int = 10000
 
 
 #########################
+# RandomForest Model    #
+#########################
+# Number of tree in the forest
+NUMBER_TREES = 500
+# random forest model cuttof
+CUTTOF = 0.29
+
+
+#########################
 # Background methods    #
 #########################
-# random forest model cuttof
-CUTTOF = 0.5
-
 # Parameter Background selection
 PARAMS_SELECTBACKGROUND_DEFAULT: dict = {
     "number_of_images": 20,                     # Number of image used to build the background
@@ -53,3 +59,5 @@ NUMBER_HOURS: int = 18
 # Filter image with differents shapes
 # Ration of commun area
 COMMON_AREA: int = 0.95
+
+
