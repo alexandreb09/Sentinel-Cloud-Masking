@@ -3,10 +3,24 @@
 # Contains all the parameters of the model      #
 #################################################
 
-#Bands names for Sentinel2
-SENTINEL2_BANDNAMES: list = ['B1' , 'B2' , 'B3' , 'B4'  , 'B5',
-                             'B6' , 'B7' , 'B8' , 'B8A' , 'B9',
-                             'B10', 'B11', 'B12', 'QA60']
+# Parameters of the study
+# Define date range for the given analysis
+date_start = "2018-01-01"
+date_end = "2018-12-31"
+# Define the area of interest
+# Change these values according the area of interest (EPSG:3857)
+# The following geometry roughly overlays the UK
+geometry = [[[-1.5005188188386,  60.863047140476894],
+             [-5.2798156938386,  58.92387273299673],
+             [-8.0923156938386,  58.143979050956126],
+             [-11.2563781938386, 53.4055338391001],
+             [-10.7290344438386, 51.53191367679566],
+             [-5.8071594438386,  49.63483372807331],
+             [1.0483093061614,   50.537100502005416],
+             [2.4545593061614,   52.34466616042596],
+             [-0.9731750688386,  56.724942443535866],
+             [-0.6216125688386,  60.648360105306814]]]
+
 
 
 #########################
@@ -66,3 +80,12 @@ NUMBER_HOURS: int = 18
 # Filter image with differents shapes
 # Ratio of commun area
 COMMON_AREA: int = 0.95
+
+
+#########################################
+#               Others                  #
+#########################################
+# Bands names for Sentinel2
+SENTINEL2_BANDNAMES: list = ['B1', 'B2', 'B3', 'B4', 'B5',
+                             'B6', 'B7', 'B8', 'B8A', 'B9',
+                             'B10', 'B11', 'B12', 'QA60']

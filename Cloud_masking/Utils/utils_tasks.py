@@ -1,7 +1,7 @@
 #####################################################
 # Utils file for TASKS management                   #
 # Currently working on ...                          #
-#  Methods:                                         #
+# Methods:                                          #
 #   -                                               #
 #####################################################
 
@@ -12,11 +12,9 @@ import ee                               # GEE module
 import time
 
 # Others functions
-from utils import getGeometryImage, updateJSONMetaData
+import utils
 
-#################################
-# Manage GEE Tasks              #
-#################################
+
 
 def getNumberActiveTask():
     """ Return the number of task RUNNING + READY 
@@ -53,6 +51,7 @@ def getTaskList(verbose=False):
         print("RUNNING task:", cmd_out.count('RUNNING'))
     return tasks
 
+
 def cancelAllTask(verbose=False):
     """ Cancel all the active task (READY and RUNNING)
         The commann seems to fail if more than 32 arguments (task_id) are given at the same time
@@ -86,6 +85,7 @@ def cancelAllTask(verbose=False):
         print("{:-<100}\n|{:^98}|\n{:-<100}".format("",
                                                     "Task cancellation finished !", ""))
 
+
 def getAllImagesInColl(path):
     """ Return all the image in the directory
     Arguments:
@@ -97,6 +97,7 @@ def getAllImagesInColl(path):
                                 .replace("\r", "") \
                                 .split("\n")[:-1]
     return list_images
+
 
 def getMetaDataImage(image):
     """ Retrive the geometry - time_start - time_end from the image
@@ -139,7 +140,6 @@ def addMetaDataImage(mask):
     return mask.set(meta)
 
 
-
 def export_image_to_drive(image, roi=None, name=None, folder="default_drive_folder_name"):
     """ Export one image to Google Drive
     Arguments
@@ -149,7 +149,7 @@ def export_image_to_drive(image, roi=None, name=None, folder="default_drive_fold
         :param name=None: name of the image
     """
     if roi == None:
-        roi = getGeometryImage(image).coordinates().getInfo()
+        roi = utils.getGeometryImage(image).coordinates().getInfo()
     if name == None: name = image.id().getInfo()
 
     # Create a task : export the result as image asset
@@ -198,7 +198,7 @@ def exportImageListToDrive(image_to_run, drive_folder_name="default_drive_folder
                 # Export image
                 export_image_to_drive(
                     image, name=image_name, folder=drive_folder_name)
-                updateJSONMetaData("Metadata_mask.json", meta_data)
+                utils.updateJSONMetaData("Metadata_mask.json", meta_data)
 
                 print("{:4d}/{} = {:05.2f}%   Image {}".format(counter,
                                                             total,
@@ -212,7 +212,7 @@ def exportImageListToDrive(image_to_run, drive_folder_name="default_drive_folder
     print("{:-<100}\n|{:^98}|\n{:-<100}".format("", "Export to drive finished !", ""))
 
 
-ee.Initialize()
+# ee.Initialize()
 
-list_image = getAllImagesInColl('users/ab43536/masks_4_methods')
-exportImageListToDrive(list_image, "Mask_UK_2018")
+# list_image = getAllImagesInColl('users/ab43536/masks_4_methods')
+# exportImageListToDrive(list_image, "Mask_UK_2018")

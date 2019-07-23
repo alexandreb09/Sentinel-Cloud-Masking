@@ -4,16 +4,27 @@ from datetime import datetime as dt
 from shapely.geometry import Polygon
 
 def select_image_from_json(json_file, area=None, date_start=None, date_end=None):
-
+    """ Select image matching dates and area from json file (return json list)
+    Arguments:
+        :param json_file: meta data file (generated after exporting images)
+        :param area=None: area to filter (list of point coordinates)
+        :param date_start=None: starting date (format: dd-mm-yyyy)
+        :param date_end=None: end date (format: dd-mm-yyyy)
+        :return: list of images (string id)
+    """
+    # read file
     with open(json_file, "r") as f:
         list_image = json.load(f)
 
-    output = []
+    # create polygon object
     if area: area = Polygon(area)
+    # Create datetime object
     if date_start and date_end:
         date_start = dt.strptime(date_start, '%d-%m-%Y')
         date_end = dt.strptime(date_end, '%d-%m-%Y')
 
+    output = []
+    # For each images in the file
     for image, values in list_image.items():
         rep = True
 

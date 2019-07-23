@@ -1,7 +1,9 @@
 
-import ee
+
+# Import modules
+import ee               # GEE
 import sys, os          # Set file path
-# from geetools import batch
+import time             # Sleep between task running
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
@@ -11,19 +13,27 @@ sys.path.append(os.path.join(BASE_DIR, 'Utils'))
 
 
 from Utils.utils import getGeometryImage, get_name_collection, export_image
+from Utils.utils_tasks import getNumberActiveTask
 from Tree_methods.tree_methods import getMaskTree1, getMaskTree2, getMaskTree3
 from Background_methods.multitemporal_cloud_masking import CloudClusterScore
-from parameters import NUMBER_TREES, CUTTOF
+from parameters import date_start, date_end, geometry, NUMBER_TREES, CUTTOF
 
 ee.Initialize()
 
 
+# number image skipped
+skipped = 10000
+
+
+
 def computeCloudMasking(image_name, numberOfTrees=NUMBER_TREES, threshold=CUTTOF):
     """ Compute the Cloud masking 
+        Methods used: 'percentile1', 'percentile5', 'tree2', 'tree3'
     Arguments:
         :param image_name: string image name
         :param numberOfTrees=NUMBER_TREE: Size of forest in randomForest model
         :param threshold=CUTTOF: RandomForest model cuttof
+        :return: one binary image: 0 cloud free, 1 cloudy
     """
 
     # Import training data as GEE object
@@ -61,44 +71,52 @@ def computeCloudMasking(image_name, numberOfTrees=NUMBER_TREES, threshold=CUTTOF
     return masked_image
 
 
-date_start = "2018-01-01"
-date_end = "2018-12-31"
-geometry = ee.Geometry.Polygon(
-        [[[-1.5005188188386, 60.863047140476894],
-          [-5.2798156938386, 58.92387273299673],
-          [-8.0923156938386, 58.143979050956126],
-          [-11.2563781938386, 53.4055338391001],
-          [-10.7290344438386, 51.53191367679566],
-          [-5.8071594438386, 49.63483372807331],
-          [1.0483093061614, 50.537100502005416],
-          [2.4545593061614, 52.34466616042596],
-          [-0.9731750688386, 56.724942443535866],
-          [-0.6216125688386, 60.648360105306814]]])
+def process_and_store_to_GEE(date_start=date_start, date_end=date_end, geometry=geometry,
+                             folder='users/ab43536/default_name', skipped=0,
+                             nb_task_max=2):
+    # Cast to GEE object
+    geometry = ee.Geometry.Polygon(geometry)
+
+    # Get Sentinel ImageCollection according to filters
+    col = ee.ImageCollection("COPERNICUS/S2") \
+            .filterDate(date_start, date_end) \
+            .filterBounds(geometry)
+
+    # Remove the `skipped` first image if specified
+    if skipped > 0:
+        col = ee.ImageCollection(col.toList(col.size().getInfo() - skipped, skipped ))
+
+    # Get all image name as a python list (string)
+    image_names = get_name_collection(col).getInfo()
+    total = len(image_names) + skipped
+
+    # If imageCollection do not exist: create one
+    if folder not in [elt["id"] for elt in ee.data.getList({"id":'/'.join(folder.split('/')[:-1])})]:
+        ee.data.createAsset({'type': "ImageCollection"}, folder)
+
+    k = 0
+    while len(image_names) > 0:
+        nb_task_pending = getNumberActiveTask()
+
+        if nb_task_pending < nb_task_max:
+            new_images = nb_task_max - nb_task_pending
+            # Select the n first images
+            image_running = image_names[:new_images]
+            # Remove them from image to run
+            image_names = image_names[new_images:]
+
+            for name in image_running:
+                i = k + skipped
+                print("{:4d}/{} = {:05.2f}%   Image {}".format(i, total, i / total * 100, name))
+                mask = computeCloudMasking(name)
+                mask = mask.set('number', i)
+                export_image(image=mask, asset_id=folder, roi=getGeometryImage(ee.Image(name)),
+                                name=name.split('/')[-1], num=i, total=total)
+                
+                k += 1
+                
+        time.sleep(30)
 
 
-col = ee.ImageCollection("COPERNICUS/S2") \
-        .filterDate(date_start, date_end) \
-        .filterBounds(geometry)
-        
-
-# col = ee.ImageCollection(col.toList(col.size(), 1059))
-
-# number image skipped
-skipped = 10000
-
-col = ee.ImageCollection(col.toList(col.size().getInfo() - skipped, skipped ))
-
-image_names = get_name_collection(col).getInfo()
-total = len(image_names) + skipped
-
-folder = "users/ab43536/masks_4_methods"
-if folder not in [elt["id"] for elt in ee.data.getList({"id": "users/ab43536"})]:
-    ee.data.createAsset({'type': "ImageCollection"}, folder)
-
-for k, name in enumerate(image_names):
-    i = k + skipped
-    print("{:4d}/{} = {:05.2f}%   Image {}".format(i, total, i / total * 100, name))
-    mask = computeCloudMasking(name)
-    mask = mask.set('number', i)
-    export_image(image=mask, asset_id=folder, roi=getGeometryImage(ee.Image(name)),
-                 name=name.split('/')[-1], num=i, total=total)
+if __name__ == "__main__":
+    process_and_store_to_GEE()
