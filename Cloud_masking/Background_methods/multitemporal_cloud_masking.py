@@ -1,6 +1,19 @@
-############################################
-# 
-
+#####################################################
+# Methods file cloud prediction                     #
+#                                                   #
+# Methods used from selecting the background        #
+#   - SelectBackgroundImages(sentinel_img,          #
+#                            number_of_images,      #
+#                            number_preselect,      #
+#                            region_of_interest)    #
+#   - SelectImagesTraining(sentinel_img,            #
+#                          imgColl,                 #
+#                          number_of_images)        #
+#   - CloudClusterScore(img,                        #
+#                       region_of_interest,         #
+#                       number_of_images            #
+#                       number_preselect)           #
+#####################################################
 import ee
 import os, sys
 
@@ -27,7 +40,7 @@ def SelectBackgroundImages(sentinel_img, number_of_images,
         :param region_of_interest: 
     """
 
-    # Retrieve Sentinel Collection - filter by area of interest + Tile
+    # Retrieve Sentinel Collection + filter by area of interest + Tile
     sentinel_collection = ee.ImageCollection("COPERNICUS/S2") \
                             .filterBounds(region_of_interest) \
                             .filter(ee.Filter.eq("MGRS_TILE", sentinel_img.get('MGRS_TILE')))
@@ -41,9 +54,15 @@ def SelectBackgroundImages(sentinel_img, number_of_images,
     # Remove partial tiles images
     sentinel_collection = filter_partial_tiles(sentinel_collection, sentinel_img, region_of_interest)
 
+    # Filter sentinel collection par date 
+    dataset_date_asc = sentinel_collection.sort("system:time_start", False)
+    dataset_date_desc = sentinel_collection.sort("system:time_start")
+
     # Background selection according to the method number
-    imgColl_percentile1 = method1(sentinel_img, sentinel_collection, number_of_images)
-    imgColl_percentile5 = method5(sentinel_img, sentinel_collection, number_of_images, number_preselect)
+    imgColl_percentile1 = method1(sentinel_img, number_of_images,
+                                  dataset_date_asc, dataset_date_desc)
+    imgColl_percentile5 = method5(sentinel_img, number_of_images,
+                                  number_preselect, dataset_date_asc, dataset_date_desc)
 
     # Get rid of images with many invalid values
     def _count_valid(img):
@@ -73,17 +92,21 @@ def SelectImagesTraining(sentinel_img, imgColl, number_of_images):
         :param number_of_images: number of image to keep
         :return: ee.Image (GEE)
     """
-   
+    # Prevent out of range error
     size_img_coll = ee.Number(imgColl.size())
     offset = ee.Number(0).max(size_img_coll.subtract(number_of_images))
+
+    # Transform to list + slice if too many images
     imagenes_training = imgColl.toList(count=number_of_images, offset=offset)
 
     # Join images into a single image
     for lag in range(1, number_of_images + 1):
+        # Select image 
         image_add = ee.Image(imagenes_training.get(number_of_images - lag))
+        # Rename bands
         new_band_names = GenerateBandNames(SENTINEL2_BANDNAMES, "_lag_" + str(lag))
-
         image_add = image_add.select(SENTINEL2_BANDNAMES, new_band_names)
+        # Add bands to the output image (1 image)
         sentinel_img = sentinel_img.addBands(image_add)
         sentinel_img = sentinel_img.set("system:time_start_lag_" + str(lag), image_add.get("system:time_start"))
 
@@ -94,8 +117,7 @@ def CloudClusterScore(img, region_of_interest,
                       number_of_images=PARAMS_SELECTBACKGROUND_DEFAULT['number_of_images'],
                       number_preselect=PARAMS_SELECTBACKGROUND_DEFAULT['number_preselect']
                       ):
-    """
-    Function to obtain the cloud cluster score from percentile methods
+    """  Get the cloud cluster score from percentile methods
     Params are defined in parameters.py file
         :param img: 
         :param region_of_interest: 
@@ -109,7 +131,7 @@ def CloudClusterScore(img, region_of_interest,
     # Forecast band names
     forecast_bands_sentinel2 = [i + "_forecast" for i in SENTINEL2_BANDNAMES]
 
-    # Select background image in one image                  
+    # Select boackground, return two imageCollection for the 2 methods              
     imgColl_p1, imgColl_p5 = SelectBackgroundImages(img,
                                      number_of_images,
                                      number_preselect,

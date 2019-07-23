@@ -1,10 +1,21 @@
-"""
-Created on June 15, 2016
+#####################################################
+# Methods file NORMALISATION Clustering             #
+#                                                   #
+# Methods used from selecting the background        #
+#   - ComputeNormalizationFeatureCollection(        #
+#               feature_collection,                 #
+#               bands_to_normalize,                 #
+#               only_center_data = False,           #
+#               weight = None)                      #
+#   - ApplyNormalizationImage(img,                  #
+#                             bands,                #
+#                             mean,                 #
+#                             sd)                   #
+#####################################################
 
-@author:  Gonzalo Mateo Garcia
-@contact: gonzalo.mateo-garcia@uv.es
+# Same file as : https://github.com/IPL-UV/ee_ipl_uv/blob/master/ee_ipl_uv/normalization.py
 
-"""
+
 import ee
 
 
@@ -69,17 +80,6 @@ def ComputeNormalizationFeatureCollection(feature_collection,
     return feature_collection.map(NormalizeFeature), mean, sd
 
 
-def ApplyToFeature(properties, function):
-    properties = ee.List(properties)
-
-    def funcion_apply(feature_iter):
-        feature_iter = ee.Feature(feature_iter)
-        values = properties.map(lambda bn: function(ee.Number(feature_iter.get(bn))))
-        dictio = ee.Dictionary.fromLists(properties, values)
-        return feature_iter.setMulti(dictio)
-    return funcion_apply
-
-
 def ApplyNormalizationImage(img, bands, mean, sd):
     for band in bands:
         im_copy = img.select(band)
@@ -91,13 +91,24 @@ def ApplyNormalizationImage(img, bands, mean, sd):
     return img
 
 
-def ApplyDenormalizationImage(img, bands, mean, sd=None):
-    for band in bands:
-        im_copy = img.select(band)
-        if sd is not None:
-            im_copy = im_copy.multiply(ee.Number(sd.get(band))).add(ee.Number(mean.get(band)))
-        else:
-            im_copy = im_copy.add(ee.Number(mean.get(band)))
+# def ApplyToFeature(properties, function):
+#     properties = ee.List(properties)
 
-        img = img.addBands(im_copy, overwrite=True)
-    return img
+#     def funcion_apply(feature_iter):
+#         feature_iter = ee.Feature(feature_iter)
+#         values = properties.map(lambda bn: function(ee.Number(feature_iter.get(bn))))
+#         dictio = ee.Dictionary.fromLists(properties, values)
+#         return feature_iter.setMulti(dictio)
+#     return funcion_apply
+
+
+# def ApplyDenormalizationImage(img, bands, mean, sd=None):
+#     for band in bands:
+#         im_copy = img.select(band)
+#         if sd is not None:
+#             im_copy = im_copy.multiply(ee.Number(sd.get(band))).add(ee.Number(mean.get(band)))
+#         else:
+#             im_copy = im_copy.add(ee.Number(mean.get(band)))
+
+#         img = img.addBands(im_copy, overwrite=True)
+#     return img

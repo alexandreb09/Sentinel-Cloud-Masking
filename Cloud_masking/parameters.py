@@ -1,10 +1,12 @@
 #################################################
 #                PARAMETER FILE                 #
-# Contain all the parameters of the model       #
+# Contains all the parameters of the model      #
 #################################################
+
 #Bands names for Sentinel2
-SENTINEL2_BANDNAMES: list = ['B1', 'B2', 'B3', 'B4', 'B5',
-                             'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12', 'QA60']
+SENTINEL2_BANDNAMES: list = ['B1' , 'B2' , 'B3' , 'B4'  , 'B5',
+                             'B6' , 'B7' , 'B8' , 'B8A' , 'B9',
+                             'B10', 'B11', 'B12', 'QA60']
 
 
 #########################
@@ -19,9 +21,9 @@ COEF_NORMALISATION: int = 10000
 # RandomForest Model    #
 #########################
 # Number of tree in the forest
-NUMBER_TREES = 500
+NUMBER_TREES: int = 500
 # random forest model cuttof
-CUTTOF = 0.29
+CUTTOF: int = 0.29
 
 
 #########################
@@ -29,11 +31,16 @@ CUTTOF = 0.29
 #########################
 # Parameter Background selection
 PARAMS_SELECTBACKGROUND_DEFAULT: dict = {
-    "number_of_images": 20,                     # Number of image used to build the background
+    # Number of image used to build the background
+    "number_of_images": 20,
+    # Number of image for candicate images (method 5)
     "number_preselect": 40,
+    # Allow select background image in futur 
+    "allow_future": True,
 }
 
 # Default parameters for cloud clustering
+# Sames as used in this article: https://www.mdpi.com/2072-4292/10/7/1079
 PARAMS_CLOUDCLUSTERSCORE_DEFAULT: dict = {
     "sampling_factor": .05,
     "lmbda": 1e-6,
@@ -57,7 +64,5 @@ PARAMS_CLOUDCLUSTERSCORE_DEFAULT: dict = {
 NUMBER_HOURS: int = 18
 
 # Filter image with differents shapes
-# Ration of commun area
+# Ratio of commun area
 COMMON_AREA: int = 0.95
-
-

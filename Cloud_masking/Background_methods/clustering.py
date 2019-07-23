@@ -1,3 +1,21 @@
+#####################################################
+# Methods file cloud Clustering process             #
+#                                                   #
+# Methods used from selecting the background        #
+#   - SelectBackgroundImages(sentinel_img,          #
+#                            number_of_images,      #
+#                            number_preselect,      #
+#                            region_of_interest)    #
+#   - SelectImagesTraining(sentinel_img,            #
+#                          imgColl,                 #
+#                          number_of_images)        #
+#   - CloudClusterScore(img,                        #
+#                       region_of_interest,         #
+#                       number_of_images            #
+#                       number_preselect)           #
+#####################################################
+
+
 import normalization
 from parameters import PARAMS_CLOUDCLUSTERSCORE_DEFAULT
 import ee
@@ -5,24 +23,20 @@ import ee
 BANDS_MODEL = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12']
 
 
-def SelectClusters(image,
-                   background_prediction,
-                   result_clustering,
-                   n_clusters,
-                   bands_thresholds=["B2", "B3", "B4"],
+def SelectClusters(image, background_prediction, result_clustering,
+                   n_clusters, bands_thresholds=["B2", "B3", "B4"],
                    region_of_interest=None,
                    tileScale=PARAMS_CLOUDCLUSTERSCORE_DEFAULT['tileScale']):
-    """
-    Function that contains the logic to create the cluster score mask. given the clustering result.
-
-    :param bands_thresholds:
-    :param background_prediction:
-    :param image:
-    :param result_clustering:
-    :param n_clusters:
-    :param region_of_interest:
-    :return:
-    """
+    """ Function that contains the logic to create the cluster score mask given the clustering result.
+    Arguments:
+        :param image: 
+        :param background_prediction: 
+        :param result_clustering: 
+        :param n_clusters: 
+        :param bands_thresholds=["B2", "B3", "B4"]: 
+        :param region_of_interest=None: 
+        :param tileScale=PARAMS_CLOUDCLUSTERSCORE_DEFAULT['tileScale']: 
+    """              
     bands_norm_difference = [b + "_difference" for b in bands_thresholds]
 
     img_joined = image.subtract(background_prediction)\
@@ -45,8 +59,6 @@ def SelectClusters(image,
                                               tileScale=tileScale
                                               )
         
-        # print(clusteri.getInfo())
-        # clusteri = ee.Algorithms.If(ee.Algorithms.IsEqual(clusteri, None), 0, clusteri)
         clusteri_diff = clusteri.toArray(bands_norm_difference)
         clusteri_refl = clusteri.toArray(bands_thresholds)
         
@@ -79,7 +91,7 @@ def SelectClusters(image,
 
 
 def ClusterClouds(image,
-                  background_prediction,
+                 background_prediction,
                   threshold_dif_cloud=.045,
                   do_clustering=True, numPixels=1000,
                   threshold_reflectance=.175,
@@ -88,23 +100,22 @@ def ClusterClouds(image,
                   n_clusters=10, region_of_interest=None,
                   tileScale=PARAMS_CLOUDCLUSTERSCORE_DEFAULT['tileScale'],
                   band_name= None):
-    """
-    Function that compute the cloud score given the differences between the real and predicted image.
-
-    :param growing_ratio:
-    :param bands_thresholds:
-    :param threshold_reflectance:
-    :param do_clustering:
-    :param background_prediction:
-    :param image:
-    :param img_differences: image_real - image_pred
-    :param threshold_dif_cloud: Threshold over the cloud score to be considered clouds
-    :param threshold_dif_shadow:Threshold over the cloud score to be considered shadows
-    :param n_clusters: number of clusters
-    :param numPixels:  to be considered by the clustering algorithm
-    :param region_of_interest:  region of interest within the image
-    :param band_name: name of output band (optional)
-    :return: ee.Image with 0 for clear pixels, 1 for shadow pixels and 2 for cloudy pixels
+    """ Function that compute the cloud score given the differences between the
+        real and predicted image.
+    Arguments
+        :param image: 
+        :param background_prediction: 
+        :param threshold_dif_cloud=.045: Threshold over the cloud score to be considered clouds
+        :param do_clustering=True: 
+        :param numPixels=1000: 
+        :param threshold_reflectance=.175: 
+        :param bands_thresholds=["B2", "B3","B4"]: 
+        :param growing_ratio=2: 
+        :param n_clusters=10: number of clusters
+        :param region_of_interest=None: region of interest within the image
+        :param tileScale=PARAMS_CLOUDCLUSTERSCORE_DEFAULT['tileScale']: 
+        :param band_name=None: 
+        :return: ee.Image with 0 for clear pixels, 1 for cloudy pixels
     """
 
     img_differences = image.subtract(background_prediction)
@@ -119,12 +130,10 @@ def ClusterClouds(image,
         training, mean, std = normalization.ComputeNormalizationFeatureCollection(training,
                                                                                 BANDS_MODEL)
         clusterer = ee.Clusterer.wekaKMeans(n_clusters).train(training)
-        # print("mean: ", mean.getInfo())
-        # print("std: ", std.getInfo())
+
         img_differences_normalized = normalization.ApplyNormalizationImage(img_differences,
                                                                            BANDS_MODEL,
                                                                            mean, std)
-        # print(img_differences_normalized.getInfo())
         result = img_differences_normalized.cluster(clusterer)
 
 
