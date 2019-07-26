@@ -160,10 +160,6 @@ def CloudClusterScore(img, region_of_interest,
                                      number_of_images,
                                      number_preselect,
                                      region_of_interest)
-    # import utils
-    # names = utils.get_name_collection(imgColl_p1).getInfo()
-    # print(names)
-    # print(imgColl_p1.first().id().getInfo())
 
     # Summarize BackGround images in one band
     image_with_lags_p1 = SelectImagesTraining(img, imgColl_p1, number_of_images)
@@ -182,6 +178,13 @@ def CloudClusterScore(img, region_of_interest,
                                             forecast_bands_sentinel2)
     img_forecast_p5 = img_percentile5.select(reflectance_bands_sentinel2_perc50,
                                             forecast_bands_sentinel2)
+
+    # Clip to land area
+    land_geometry = ee.FeatureCollection(parameters.land_geometry)
+    image_with_lags_p1 = image_with_lags_p1.clip(land_geometry)
+    image_with_lags_p5 = image_with_lags_p5.clip(land_geometry)
+    img_forecast_p1 = img_forecast_p1.clip(land_geometry)
+    img_forecast_p5 = img_forecast_p5.clip(land_geometry)
 
     clusterscore_percentile1 = ClusterClouds(image_with_lags_p1.select(SENTINEL2_BANDNAMES),
                                         img_forecast_p1.select(forecast_bands_sentinel2),

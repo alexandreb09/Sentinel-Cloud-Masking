@@ -3,6 +3,7 @@ import ee               # GEE
 import sys, os          # Set file path
 import time             # Sleep between task running
 import logging          # Write logs
+import json             # Read previously define json
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
@@ -74,6 +75,9 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
     k = 0
     total = len(image_names)
 
+    # Land geometry
+    geo_land = ee.FeatureCollection(parameters.land_geometry)
+
     while len(image_names) > 0:
         nb_task_pending = getNumberActiveTask()
 
@@ -86,12 +90,15 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
 
             for name in image_running:
                 full_name = 'COPERNICUS/S2/' + name
-
                 logging.info("{:4d}/{} = {:05.2f}%   Image {}".format(k, total, k / total * 100, name))
-                mask = computeCloudMasking(full_name)
-                export_image_to_GEE(image=mask, asset_id=folder, roi=getGeometryImage(ee.Image(full_name)),
-                                name=name, num=k, total=total)
-                
+
+                # Ignore images that not intersect the land geometry
+                if ee.Image(full_name).geometry().intersects(geo_land).getInfo():
+                    mask = computeCloudMasking(full_name)
+                    export_image_to_GEE(image=mask, asset_id=folder, roi=getGeometryImage(ee.Image(full_name)),
+                                    name=name, num=k, total=total)
+                else:
+                    logging.info("The image {} do not intersect the area. It has been ignored".format(name))
                 k += 1
         
         time.sleep(30)
@@ -102,7 +109,7 @@ if __name__ == "__main__":
 
     init_logger()
 
-    import json
+    
     with open('Metadata_mask.json', 'r') as f:
         data = json.load(f)
     

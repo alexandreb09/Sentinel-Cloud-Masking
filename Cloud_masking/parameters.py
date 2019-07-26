@@ -15,7 +15,7 @@ date_end = "2018-12-31"
 #                   country border. The border shapefile can be added to GEE Assets
 #                   and then used by providing the path.
 #                   Ex: geometry = "users/ab43536/UK_border"
-# NOTE: providing a border is high consuming. It's
+# NOTE: providing a border is high consuming.
 
 # geometry = [[[-0.18968822276610808, 61.70499236376784],
 #              [-3.193305499581811, 59.73284719869931],

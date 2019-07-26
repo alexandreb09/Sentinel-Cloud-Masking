@@ -48,3 +48,67 @@
   --------------------------------------------------------------------------------------------------
 |                                      Processus started :-)                                       |
 ----------------------------------------------------------------------------------------------------
+  --------------------------------------------------------------------------------------------------
+|                                      Processus started :-)                                       |
+----------------------------------------------------------------------------------------------------
+  	- There are 20382 images in Sentinel Collection matching date and area constraints
+  	- There are 274 images already processed (already existing in GEE folder)
+  	- There are 9971 images to ignore
+  	- There are 10208 images to process
+     0/10208 = 00.00%   Image 20180706T110621_20180706T110918_T30UXF
+  --------------------------------------------------------------------------------------------------
+|                                      Processus started :-)                                       |
+----------------------------------------------------------------------------------------------------
+  	- There are 20382 images in Sentinel Collection matching date and area constraints
+  	- There are 274 images already processed (already existing in GEE folder)
+  	- There are 9971 images to ignore
+  	- There are 10208 images to process
+     0/10208 = 00.00%   Image 20180714T112109_20180714T112112_T30UXD
+  --------------------------------------------------------------------------------------------------
+|                                      Processus started :-)                                       |
+----------------------------------------------------------------------------------------------------
+  	- There are 20382 images in Sentinel Collection matching date and area constraints
+  	- There are 274 images already processed (already existing in GEE folder)
+  	- There are 9971 images to ignore
+  	- There are 10208 images to process
+     0/10208 = 00.00%   Image 20180818T112111_20180818T112627_T29UQS
+     1/10208 = 00.01%   Image 20181016T115401_20181016T115357_T30UUG
+     2/10208 = 00.02%   Image 20181204T113439_20181204T113436_T30UUD
+     3/10208 = 00.03%   Image 20181210T115459_20181210T115456_T29VPF
+  The image 20181210T115459_20181210T115456_T29VPF do not intersect the area. It has been ignored
+     4/10208 = 00.04%   Image 20181222T114501_20181222T114500_T30UVG
+     5/10208 = 00.05%   Image 20180829T114339_20180829T114339_T29UQU
+  The image 20180829T114339_20180829T114339_T29UQU do not intersect the area. It has been ignored
+     6/10208 = 00.06%   Image 20180914T110651_20180914T111041_T30VXH
+  The image 20180914T110651_20180914T111041_T30VXH do not intersect the area. It has been ignored
+     7/10208 = 00.07%   Image 20180703T115359_20180703T115358_T30VVL
+     8/10208 = 00.08%   Image 20181211T112449_20181211T112446_T30UXF
+     9/10208 = 00.09%   Image 20180910T113321_20180910T113316_T31VCH
+  The image 20180910T113321_20180910T113316_T31VCH do not intersect the area. It has been ignored
+    10/10208 = 00.10%   Image 20180906T115401_20180906T115357_T28UGD
+  The image 20180906T115401_20180906T115357_T28UGD do not intersect the area. It has been ignored
+    11/10208 = 00.11%   Image 20180920T113311_20180920T113314_T30VUH
+    12/10208 = 00.12%   Image 20180901T105621_20180901T105939_T31UCU
+    13/10208 = 00.13%   Image 20180714T112109_20180714T112112_T31UCB
+  The image 20180714T112109_20180714T112112_T31UCB do not intersect the area. It has been ignored
+    14/10208 = 00.14%   Image 20181018T105031_20181018T105349_T31UDU
+  The image 20181018T105031_20181018T105349_T31UDU do not intersect the area. It has been ignored
+    15/10208 = 00.15%   Image 20180922T112109_20180922T112106_T30UXC
+    16/10208 = 00.16%   Image 20180928T114349_20180928T114343_T29UQU
+  The image 20180928T114349_20180928T114343_T29UQU do not intersect the area. It has been ignored
+    17/10208 = 00.17%   Image 20181103T111221_20181103T111436_T31UDV
+  The image 20181103T111221_20181103T111436_T31UDV do not intersect the area. It has been ignored
+    18/10208 = 00.18%   Image 20180908T114339_20180908T114340_T29UNV
+    19/10208 = 00.19%   Image 20181020T113321_20181020T113439_T29UNR
+  The image 20181020T113321_20181020T113439_T29UNR do not intersect the area. It has been ignored
+    20/10208 = 00.20%   Image 20180906T105639_20180906T110521_T30UYC
+    21/10208 = 00.21%   Image 20181216T112451_20181216T112449_T29UQS
+    22/10208 = 00.22%   Image 20180822T105621_20180822T110418_T31UCU
+    23/10208 = 00.23%   Image 20180912T112109_20180912T112104_T30UWA
+    24/10208 = 00.24%   Image 20180820T120401_20180820T120356_T29UNB
+  The image 20180820T120401_20180820T120356_T29UNB do not intersect the area. It has been ignored
+    25/10208 = 00.24%   Image 20181122T114401_20181122T114454_T29VNE
+    26/10208 = 00.25%   Image 20180930T113321_20180930T113315_T30VVJ
+    27/10208 = 00.26%   Image 20180814T114351_20180814T114413_T30VXN
+    28/10208 = 00.27%   Image 20180706T110621_20180706T110918_T31UDV
+  The image 20180706T110621_20180706T110918_T31UDV do not intersect the area. It has been ignored

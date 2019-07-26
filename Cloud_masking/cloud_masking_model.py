@@ -52,9 +52,9 @@ def computeCloudMasking(image_name, numberOfTrees=NUMBER_TREES, threshold=CUTTOF
     image = ee.Image(image_name)
     roi = getGeometryImage(image)
 
-    # UK BORDER + mask sea
-    # land_geometry = ee.FeatureCollection(parameters.land_geometry)
-    # image = image.clip(land_geometry)
+    # UK BORDER <=> mask sea
+    land_geometry = ee.FeatureCollection(parameters.land_geometry)
+    image = image.clip(land_geometry)
 
     # Apply the different methods
     # tree1 = getMaskTree1(image, roi)
@@ -63,7 +63,8 @@ def computeCloudMasking(image_name, numberOfTrees=NUMBER_TREES, threshold=CUTTOF
     percentile1, percentile5 = CloudClusterScore(image, roi)
 
     # Add each result as a band of the final image
-    final_image = tree3.addBands([tree2, percentile1, percentile5])
+    final_image = tree3.addBands([tree2, percentile1, percentile5]) \
+                        .clip(land_geometry)
 
     # Apply the random Forest classification
     masked_image = final_image.classify(randomForest) \
