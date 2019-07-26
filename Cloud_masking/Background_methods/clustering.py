@@ -91,7 +91,7 @@ def SelectClusters(image, background_prediction, result_clustering,
 
 
 def ClusterClouds(image,
-                 background_prediction,
+                  background_prediction,
                   threshold_dif_cloud=.045,
                   do_clustering=True, numPixels=1000,
                   threshold_reflectance=.175,
@@ -126,6 +126,7 @@ def ClusterClouds(image,
                                         scale=30, numPixels=numPixels,
                                         tileScale=tileScale
                                         )
+        
 
         training, mean, std = normalization.ComputeNormalizationFeatureCollection(training,
                                                                                 BANDS_MODEL)
@@ -170,8 +171,8 @@ def ClusterClouds(image,
 
     # apply opening
     kernel = ee.Kernel.circle(radius=growing_ratio)
-    cloud_score_threshold = cloud_score_threshold.focal_min(kernel=kernel).\
-        focal_max(kernel=kernel)
+    cloud_score_threshold = cloud_score_threshold.focal_min(kernel=kernel) \
+                                                .focal_max(kernel=kernel)
 
     # Rename band name
     if band_name:

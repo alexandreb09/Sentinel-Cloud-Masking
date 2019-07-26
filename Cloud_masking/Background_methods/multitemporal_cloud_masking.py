@@ -13,6 +13,9 @@
 #                       region_of_interest,         #
 #                       number_of_images            #
 #                       number_preselect)           #
+#   - filter_partial_tiles(images_background,       #
+#                          image,                   #
+#                          region_of_interest)      #
 #####################################################
 import ee
 import os, sys
@@ -21,11 +24,31 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(BASE_DIR, '..'))
 from parameters import *
-from utils import GenerateBandNames, filter_partial_tiles
+from utils import GenerateBandNames
 from background_methods import method1, method5
 from clustering import ClusterClouds
+import parameters
 
 
+def filter_partial_tiles(images_background, image, region_of_interest):
+    """ Remove image with different shapes (should share at least COMMON_AREA % common)
+    Arguments:
+        :param images_background: 
+        :param image: 
+        :param region_of_interest: 
+    """
+    def set_area_roi(image):
+        image = ee.Image(image)
+        pol = ee.Geometry.Polygon(ee.Geometry(
+            image.get('system:footprint')).coordinates())
+        ratio = pol.intersection(region_of_interest).area() \
+            .divide(region_of_interest.area())
+        return image.set({"common_area": ratio})
+
+    # Add nb of pixels in area of interest
+    images_background = images_background.map(set_area_roi)
+
+    return images_background.filter(ee.Filter.gt("common_area", COMMON_AREA))
 
 
 def SelectBackgroundImages(sentinel_img, number_of_images,
@@ -76,6 +99,7 @@ def SelectBackgroundImages(sentinel_img, number_of_images,
 
         img = img.set("valids", dictio.get("all"))
         return img
+
     imgColl_percentile1 = imgColl_percentile1.map(_count_valid).sort("valids").limit(number_of_images)
     imgColl_percentile5 = imgColl_percentile5.map(_count_valid).sort("valids").limit(number_of_images)
     
@@ -101,7 +125,7 @@ def SelectImagesTraining(sentinel_img, imgColl, number_of_images):
 
     # Join images into a single image
     for lag in range(1, number_of_images + 1):
-        # Select image 
+        # Select image
         image_add = ee.Image(imagenes_training.get(number_of_images - lag))
         # Rename bands
         new_band_names = GenerateBandNames(SENTINEL2_BANDNAMES, "_lag_" + str(lag))
@@ -136,7 +160,11 @@ def CloudClusterScore(img, region_of_interest,
                                      number_of_images,
                                      number_preselect,
                                      region_of_interest)
-    
+    # import utils
+    # names = utils.get_name_collection(imgColl_p1).getInfo()
+    # print(names)
+    # print(imgColl_p1.first().id().getInfo())
+
     # Summarize BackGround images in one band
     image_with_lags_p1 = SelectImagesTraining(img, imgColl_p1, number_of_images)
     image_with_lags_p5 = SelectImagesTraining(img, imgColl_p5, number_of_images)
@@ -147,10 +175,13 @@ def CloudClusterScore(img, region_of_interest,
 
     reflectance_bands_sentinel2_perc50 = [i + "_p50" for i in SENTINEL2_BANDNAMES]
     
+    # Mask ocean area
+    # land_geometry = ee.FeatureCollection(parameters.land_geometry)
+
     img_forecast_p1 = img_percentile1.select(reflectance_bands_sentinel2_perc50,
-                                    forecast_bands_sentinel2)
+                                            forecast_bands_sentinel2)
     img_forecast_p5 = img_percentile5.select(reflectance_bands_sentinel2_perc50,
-                                    forecast_bands_sentinel2)
+                                            forecast_bands_sentinel2)
 
     clusterscore_percentile1 = ClusterClouds(image_with_lags_p1.select(SENTINEL2_BANDNAMES),
                                         img_forecast_p1.select(forecast_bands_sentinel2),

@@ -7,9 +7,43 @@
 # Define date range for the given analysis
 date_start = "2018-01-01"
 date_end = "2018-12-31"
-# Define the area of interest
-# Change these values according the area of interest (EPSG:3857)
-# The following geometry roughly overlays the UK
+
+# Define the area of interest. Change these values according the area
+# of interest (EPSG:3857). The type can be:
+#       - a list of points: [[[x0, y0], [x1, y1], ... ]]
+#       - a string: a path to GEE Feature collection. This is usefull when using 
+#                   country border. The border shapefile can be added to GEE Assets
+#                   and then used by providing the path.
+#                   Ex: geometry = "users/ab43536/UK_border"
+# NOTE: providing a border is high consuming. It's
+
+# geometry = [[[-0.18968822276610808, 61.70499236376784],
+#              [-3.193305499581811, 59.73284719869931],
+#              [-5.325089620808512, 59.58951641493764],
+#              [-9.399354237873467, 57.845320092643185],
+#              [-14.171772687416706, 57.82138467870956],
+#              [-13.730329864317127, 57.34881400936257],
+#              [-8.08648643189997, 57.30233012037025],
+#              [-7.8217005199061305, 56.48359136715814],
+#              [-6.763478605070759, 55.74630611995712],
+#              [-8.614580937646224, 54.485756439010636],
+#              [-7.468376415417879, 53.606034092022945],
+#              [-4.639521093380836, 53.899696486437676],
+#              [-6.7627523108039895, 49.728249042563874],
+#              [-3.85768905856321, 49.954131633679516],
+#              [1.5250388211492236, 50.85347177630827],
+#              [2.1398276005526213, 52.76026102525827],
+#              [-0.7924843140583562, 55.15337275817801],
+#              [-1.9974803995539787, 56.29351938965108],
+#              [-1.2901782736278165, 57.59091361215057],
+#              [-2.8291194066866865, 58.05226927668464],
+#              [-1.1716770318516865, 59.54786251775706],
+#              [0.38660793514554825, 61.46785022032127]]]
+
+# Land geometry (use to mask the ocean)
+land_geometry = "users/ab43536/UK_border"
+
+# Geometry that roughly overlays the UK (hands points)
 geometry = [[[-1.5005188188386,  60.863047140476894],
              [-5.2798156938386,  58.92387273299673],
              [-8.0923156938386,  58.143979050956126],
@@ -89,3 +123,6 @@ COMMON_AREA: int = 0.95
 SENTINEL2_BANDNAMES: list = ['B1', 'B2', 'B3', 'B4', 'B5',
                              'B6', 'B7', 'B8', 'B8A', 'B9',
                              'B10', 'B11', 'B12', 'QA60']
+
+# Log File name
+LOG_FILE: str = "logs.log"
