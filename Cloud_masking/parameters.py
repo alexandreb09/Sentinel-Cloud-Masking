@@ -1,44 +1,51 @@
 #################################################
 #                PARAMETER FILE                 #
 # Contains all the parameters of the model      #
+#                                               #
+# Parameters:                                   #
+#       - date_start                            #
+#       - date_end                              #
+#       - land_geometry                         #
+#       - geometry                              #            
+#       - COEF_NORMALISATION                    #
+#       - NUMBER_TREES                          #
+#       - CUTTOF                                #
+#       - PARAMS_CLOUDCLUSTERSCORE_DEFAULT      #
+#       - PARAMS_SELECTBACKGROUND_DEFAULT       #
+#       - NUMBER_HOURS                          #
+#       - COMMON_AREA                           #
+#       - SENTINEL2_BANDNAMES                   #
+#       - LOG_FILE                              #
 #################################################
 
+
+
+#########################
+# RandomForest Model    #
+#########################
+# Number of tree in the forest
+# random forest model cuttof
+
 # Parameters of the study
-# Define date range for the given analysis
+# Define DATE RANGE for the given analysis
 date_start = "2018-01-01"
 date_end = "2018-12-31"
 
 # Define the area of interest. Change these values according the area
-# of interest (EPSG:3857). The type can be:
-#       - a list of points: [[[x0, y0], [x1, y1], ... ]]
-#       - a string: a path to GEE Feature collection. This is usefull when using 
-#                   country border. The border shapefile can be added to GEE Assets
-#                   and then used by providing the path.
-#                   Ex: geometry = "users/ab43536/UK_border"
-# NOTE: providing a border is high consuming.
-
-# geometry = [[[-0.18968822276610808, 61.70499236376784],
-#              [-3.193305499581811, 59.73284719869931],
-#              [-5.325089620808512, 59.58951641493764],
-#              [-9.399354237873467, 57.845320092643185],
-#              [-14.171772687416706, 57.82138467870956],
-#              [-13.730329864317127, 57.34881400936257],
-#              [-8.08648643189997, 57.30233012037025],
-#              [-7.8217005199061305, 56.48359136715814],
-#              [-6.763478605070759, 55.74630611995712],
-#              [-8.614580937646224, 54.485756439010636],
-#              [-7.468376415417879, 53.606034092022945],
-#              [-4.639521093380836, 53.899696486437676],
-#              [-6.7627523108039895, 49.728249042563874],
-#              [-3.85768905856321, 49.954131633679516],
-#              [1.5250388211492236, 50.85347177630827],
-#              [2.1398276005526213, 52.76026102525827],
-#              [-0.7924843140583562, 55.15337275817801],
-#              [-1.9974803995539787, 56.29351938965108],
-#              [-1.2901782736278165, 57.59091361215057],
-#              [-2.8291194066866865, 58.05226927668464],
-#              [-1.1716770318516865, 59.54786251775706],
-#              [0.38660793514554825, 61.46785022032127]]]
+# of interest (EPSG:3857). There are two parameters for the ROI:
+#   - GEOMETRY: 
+#       - a list of list of points: [[[x0, y0], [x1, y1], ... ]]
+#       - This used to prevent GEE limitations. This geometry is firtly used to roughly
+#         filter the Sentinel2 imageCollection according to the ROI. 
+#         You can use the GEE Code Editor, draw a polygon on the map over 
+#         the area of interest and copy past the coordinates.
+#   - land_geometry:
+#       - a string: a path to GEE Feature collection. Ex: "users/ab43536/UK_border"
+#       - This is used to mask data outside. Usefull for masking ocean,
+#         others country).
+#       - If the image do not intersect the geometry, the image is ignored
+#       - This can be a feature collection with quite a high resolution. The GEE Code Editor 
+#         allows to import shapefile.
 
 # Land geometry (use to mask the ocean)
 land_geometry = "users/ab43536/UK_border"
@@ -114,6 +121,17 @@ NUMBER_HOURS: int = 18
 # Filter image with differents shapes
 # Ratio of commun area
 COMMON_AREA: int = 0.95
+
+
+#########################################
+#            Exportation                #
+#########################################
+# Number of GEE tasks running at the same time
+# GEE restriction: must be below 3000
+# Providing a high number is adding task in pending list
+# but might be really boring to handle
+# The actual number of task processing at the same time is below 10
+nb_task_max = 30
 
 
 #########################################

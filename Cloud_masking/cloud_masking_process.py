@@ -24,7 +24,7 @@ import parameters
 
 def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
                              folder='users/ab43536/default_name', image_to_exclude=[],
-                             nb_task_max=30, silent=False):
+                             nb_task_max=parameters.nb_task_max, silent=False):
     
     if not silent:
         logging.info("{:-<98}\n|{:^98}|\n{:-<100}".format("", "Processus started :-)", ""))

@@ -51,25 +51,14 @@ def select_image_from_json(json_file, area=None, date_start=None, date_end=None)
 import ee
 ee.Initialize()
 
-area = [-3.4733135998687885, 57.090152154809864]
-area = [[-4.1379864514312885, 57.39924721397613],
-        [-4.1379864514312885, 57.27176253119143],
-        [-3.9072735608062885, 57.27176253119143],
-        [-3.9072735608062885, 57.39924721397613]]
+point_center = [-2.0264646301407083, 54.56517430780476]
+point_south = [-1.4551755676407083, 51.69243604580755]
 
-out = select_image_from_json('Metadata_mask.json', area=area,  date_start='01-01-2018', date_end='31-12-2018')
-print(out[0])
-out = [o.split('/')[-1] for o in out]
-print(len(out))
+date_start = "01-01-2018"
+date_end = "28-02-2018"
 
-with open('Metadata_mask.json', "r") as f:
-    list_image = json.load(f)
+out_p1 = select_image_from_json("Metadata_mask.json", point_center, date_start, date_end)
+out_p2 = select_image_from_json("Metadata_mask.json", point_south, date_start, date_end)
 
-names = [name.split('/')[-1] for name in list(list_image.keys())]
-print(len(names))
-
-image_delete = ["users/ab43536/masks_4_methods/" + name for name in names if name not in out]
-
-import utils_assets
-
-utils_assets.delete_assets(image_delete)
+print(out_p1[:10])
+print(out_p2[:10])

@@ -37,7 +37,7 @@ def filter_partial_tiles(images_background, image, region_of_interest):
         :param image: 
         :param region_of_interest: 
     """
-    def set_area_roi(image):
+    def set_common_area(image):
         image = ee.Image(image)
         pol = ee.Geometry.Polygon(ee.Geometry(
             image.get('system:footprint')).coordinates())
@@ -46,7 +46,7 @@ def filter_partial_tiles(images_background, image, region_of_interest):
         return image.set({"common_area": ratio})
 
     # Add nb of pixels in area of interest
-    images_background = images_background.map(set_area_roi)
+    images_background = images_background.map(set_common_area)
 
     return images_background.filter(ee.Filter.gt("common_area", COMMON_AREA))
 
