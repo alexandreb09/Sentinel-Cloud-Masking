@@ -57,8 +57,7 @@ point_south = [-1.4551755676407083, 51.69243604580755]
 date_start = "01-01-2018"
 date_end = "28-02-2018"
 
-out_p1 = select_image_from_json("Metadata_mask.json", point_center, date_start, date_end)
 out_p2 = select_image_from_json("Metadata_mask.json", point_south, date_start, date_end)
 
-print(out_p1[:10])
 print(out_p2[:10])
+

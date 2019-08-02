@@ -1,6 +1,10 @@
 Build_model/Data
 Cloud_masking/Data
 
+/Interpolation/Images.zip
+/Interpolation/sample_data.xlsx
+/Interpolation/Sample_data_Actual_fitted_NDVI
+
 /client_secrets.json
 /token.pickle
 /logs.log
