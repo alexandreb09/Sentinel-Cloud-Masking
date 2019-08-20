@@ -1,5 +1,7 @@
 #####################################################
 # Methods file cloud prediction                     #
+# This is called when using "background cloud       #
+# detection"                                        #
 #                                                   #
 # Methods used from selecting the background        #
 #   - SelectBackgroundImages(sentinel_img,          #
@@ -20,14 +22,15 @@
 import ee
 import os, sys
 
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(BASE_DIR, '..'))
-from parameters import *
+
+import parameters
 from utils import GenerateBandNames
 from background_methods import method1, method5
 from clustering import ClusterClouds
-import parameters
 
 
 def filter_partial_tiles(images_background, image, region_of_interest):
@@ -48,7 +51,7 @@ def filter_partial_tiles(images_background, image, region_of_interest):
     # Add nb of pixels in area of interest
     images_background = images_background.map(set_common_area)
 
-    return images_background.filter(ee.Filter.gt("common_area", COMMON_AREA))
+    return images_background.filter(ee.Filter.gt("common_area", parameters.COMMON_AREA))
 
 
 def SelectBackgroundImages(sentinel_img, number_of_images,
@@ -63,15 +66,19 @@ def SelectBackgroundImages(sentinel_img, number_of_images,
         :param region_of_interest: 
     """
 
-    # Retrieve Sentinel Collection + filter by area of interest + Tile
+    # Retrieve Sentinel Collection:
+    #   - filter by area of interest 
+    #   - filter by Tile
     sentinel_collection = ee.ImageCollection("COPERNICUS/S2") \
                             .filterBounds(region_of_interest) \
                             .filter(ee.Filter.eq("MGRS_TILE", sentinel_img.get('MGRS_TILE')))
 
     # Remove image of same date (+ or - NUMBER_HOURS hours)
     time_start = sentinel_img.get('system:time_start')
-    filter_before = ee.Filter.lt('system:time_start', ee.Number(time_start).subtract(NUMBER_HOURS*3600000))
-    filter_after  = ee.Filter.gt('system:time_start', ee.Number(time_start).add(NUMBER_HOURS*3600000))
+    filter_before = ee.Filter.lt('system:time_start', ee.Number(time_start) \
+                                                        .subtract(parameters.NUMBER_HOURS*3600000))
+    filter_after = ee.Filter.gt('system:time_start', ee.Number(time_start) \
+                                                       .add(parameters.NUMBER_HOURS*3600000))
     sentinel_collection = sentinel_collection.filter(ee.Filter.Or(filter_before, filter_after))
 
     # Remove partial tiles images
@@ -90,7 +97,7 @@ def SelectBackgroundImages(sentinel_img, number_of_images,
     # Get rid of images with many invalid values
     def _count_valid(img):
         mascara = img.mask()
-        mascara = mascara.select(SENTINEL2_BANDNAMES)
+        mascara = mascara.select(parameters.SENTINEL2_BANDNAMES)
         mascara = mascara.reduce(ee.Reducer.allNonZero())
 
         dictio = mascara.reduceRegion(reducer=ee.Reducer.mean(),
@@ -128,8 +135,8 @@ def SelectImagesTraining(sentinel_img, imgColl, number_of_images):
         # Select image
         image_add = ee.Image(imagenes_training.get(number_of_images - lag))
         # Rename bands
-        new_band_names = GenerateBandNames(SENTINEL2_BANDNAMES, "_lag_" + str(lag))
-        image_add = image_add.select(SENTINEL2_BANDNAMES, new_band_names)
+        new_band_names = GenerateBandNames(parameters.SENTINEL2_BANDNAMES, "_lag_" + str(lag))
+        image_add = image_add.select(parameters.SENTINEL2_BANDNAMES, new_band_names)
         # Add bands to the output image (1 image)
         sentinel_img = sentinel_img.addBands(image_add)
         sentinel_img = sentinel_img.set("system:time_start_lag_" + str(lag), image_add.get("system:time_start"))
@@ -138,11 +145,12 @@ def SelectImagesTraining(sentinel_img, imgColl, number_of_images):
 
 
 def CloudClusterScore(img, region_of_interest,
-                      number_of_images=PARAMS_SELECTBACKGROUND_DEFAULT['number_of_images'],
-                      number_preselect=PARAMS_SELECTBACKGROUND_DEFAULT['number_preselect']
+                      number_of_images=parameters.PARAMS_SELECTBACKGROUND_DEFAULT['number_of_images'],
+                      number_preselect=parameters.PARAMS_SELECTBACKGROUND_DEFAULT['number_preselect']
                       ):
-    """  Get the cloud cluster score from percentile methods
+    """  Get the cloud cluster score the percentile methods 1 & 5
     Params are defined in parameters.py file
+    Arguments:
         :param img: 
         :param region_of_interest: 
         :param number_of_images=PARAMS_SELECTBACKGROUND_DEFAULT['number_of_images']: 
@@ -150,10 +158,10 @@ def CloudClusterScore(img, region_of_interest,
         :return:  cloud mask (1: cloud, 0: clear)
     """
 
-    params = PARAMS_CLOUDCLUSTERSCORE_DEFAULT
+    params = parameters.PARAMS_CLOUDCLUSTERSCORE_DEFAULT
 
     # Forecast band names
-    forecast_bands_sentinel2 = [i + "_forecast" for i in SENTINEL2_BANDNAMES]
+    forecast_bands_sentinel2 = [i + "_forecast" for i in parameters.SENTINEL2_BANDNAMES]
 
     # Select boackground, return two imageCollection for the 2 methods              
     imgColl_p1, imgColl_p5 = SelectBackgroundImages(img,
@@ -169,7 +177,7 @@ def CloudClusterScore(img, region_of_interest,
     img_percentile1 = imgColl_p1.reduce(reducer=ee.Reducer.percentile(percentiles=[50]))
     img_percentile5 = imgColl_p5.reduce(reducer=ee.Reducer.percentile(percentiles=[50]))
 
-    reflectance_bands_sentinel2_perc50 = [i + "_p50" for i in SENTINEL2_BANDNAMES]
+    reflectance_bands_sentinel2_perc50 = [i + "_p50" for i in parameters.SENTINEL2_BANDNAMES]
     
     # Mask ocean area
     # land_geometry = ee.FeatureCollection(parameters.land_geometry)
@@ -181,12 +189,8 @@ def CloudClusterScore(img, region_of_interest,
 
     # Clip to land area
     land_geometry = ee.FeatureCollection(parameters.land_geometry)
-    image_with_lags_p1 = image_with_lags_p1.clip(land_geometry)
-    image_with_lags_p5 = image_with_lags_p5.clip(land_geometry)
-    img_forecast_p1 = img_forecast_p1.clip(land_geometry)
-    img_forecast_p5 = img_forecast_p5.clip(land_geometry)
 
-    clusterscore_percentile1 = ClusterClouds(image_with_lags_p1.select(SENTINEL2_BANDNAMES),
+    clusterscore_percentile1 = ClusterClouds(image_with_lags_p1.select(parameters.SENTINEL2_BANDNAMES),
                                         img_forecast_p1.select(forecast_bands_sentinel2),
                                         region_of_interest=region_of_interest,
                                         threshold_dif_cloud=params["threshold_dif_cloud"],
@@ -197,9 +201,10 @@ def CloudClusterScore(img, region_of_interest,
                                         growing_ratio=params["growing_ratio"],
                                         n_clusters = params["n_clusters"],
                                         band_name="percentile1") \
-                                    .gte(CUTTOF)
+                                    .gte(parameters.CUTTOF)    \
+                                    .clip(land_geometry)
 
-    clusterscore_percentile5 = ClusterClouds(image_with_lags_p5.select(SENTINEL2_BANDNAMES),
+    clusterscore_percentile5 = ClusterClouds(image_with_lags_p5.select(parameters.SENTINEL2_BANDNAMES),
                                         img_forecast_p5.select(forecast_bands_sentinel2),
                                         region_of_interest=region_of_interest,
                                         threshold_dif_cloud=params["threshold_dif_cloud"],
@@ -210,7 +215,8 @@ def CloudClusterScore(img, region_of_interest,
                                         growing_ratio=params["growing_ratio"],
                                         n_clusters = params["n_clusters"],
                                         band_name="percentile5") \
-                                    .gte(CUTTOF)
+                                    .gte(parameters.CUTTOF)    \
+                                    .clip(land_geometry)
     
     return clusterscore_percentile1, clusterscore_percentile5
 

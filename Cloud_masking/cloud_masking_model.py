@@ -54,7 +54,7 @@ def computeCloudMasking(image_name, numberOfTrees=NUMBER_TREES, threshold=CUTTOF
 
     # UK BORDER <=> mask sea
     land_geometry = ee.FeatureCollection(parameters.land_geometry)
-    image = image.clip(land_geometry)
+    # image = image.clip(land_geometry)
 
     # Apply the different methods
     # tree1 = getMaskTree1(image, roi)
@@ -70,9 +70,11 @@ def computeCloudMasking(image_name, numberOfTrees=NUMBER_TREES, threshold=CUTTOF
     masked_image = final_image.classify(randomForest) \
                               .gt(threshold)
 
-    # Add meta data
+    # Add meta data: geometry + date
     masked_image = masked_image.set("system:footprint", image.get('system:footprint'))
-    masked_image = masked_image.set("system:time_end", image.get('system:time_end'))
     masked_image = masked_image.set("system:time_start", image.get('system:time_start'))
+    masked_image = masked_image.set("system:time_end", image.get('system:time_end'))
 
     return masked_image
+
+

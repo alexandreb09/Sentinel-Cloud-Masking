@@ -1,12 +1,17 @@
 #####################################################
 # Utils file                                        #
-# Methods:                                          #
+# Methods GEE:                                      #
 #   - getGeometryImage(image)                       #
 #   - get_name_collection(collection)               #
+#   - GenerateBandNames(bands, sufix)               #
+#   - export_image_to_GEE(image, asset_id, roi,     #
+#                         name, num, total)         #
+# Methods Python:                                   #
 #   - createJSONMetaData(filename, data)            #
 #   - updateJSONMetaData(filename, new_data)        #
 #   - list_reshape(one_D_list, n)                   #
-#   - GenerateBandNames(bands, sufix)               #
+#   - init_logger()                                 #
+#   - date_gap()                                    #
 #####################################################
 
 # Modules required
@@ -14,12 +19,15 @@ import ee                               # Google Earth Engine API
 from subprocess import check_output     # Run windows command from python
 import json                             # Export metadata as JSON file
 import logging                          # Write
+import datetime                         # Handle dates
 
 import parameters
 
 #############################################
 #                   GEE                     #
 #############################################
+
+
 def getGeometryImage(image):
     """ Return the image geometry build from border
     Arguments:
@@ -60,13 +68,29 @@ def GenerateBandNames(bands, sufix):
     return bands.map(lambda band: ee.String(band).cat(ee.String(sufix)))
 
 
-
-def export_image_to_GEE(image, asset_id="users/ab43536/", roi=None, name=None, num=None, total=None):
+def export_image_to_GEE(image, asset_id="users/ab43536/", roi=None,
+                        name=None, num=None, total=None):
     """ Export one image to asset
-    Arguments
+    Arguments:
         :param image: image to export
-        :param roi=None:  specify the roi, default compute from image dimension
+        :param asset_id="users/ab43536/": 
+        :param roi=None: specify the roi, default compute from image dimension
+        :type roi: Python List
         :param name=None: name of the image
+        :param num=None: optional number for the image (appear on task list in GEE web interface )
+        :param total=None: total number of image processing (appear on task list in GEE web interface )
+        :return: task        
+    NOTE: the ROI must be a Python list.
+        For time efficiency, it's better to pass an already defined geometry
+        If no geometry is given, the geometry is computed from the given image
+        However, since it's the result from lot of process, requesting the geometry
+        is ressource consuming (GEE request). As results, that will create an 
+        asynchronous request very long (maybe 2 minutes).
+        In our work, the geometry doesn't change over the cloud masking process. So it's 
+        really faster to pass the geometry of the Sentinel 2 image.
+
+        If "num" and "total" (must have the both) are passed, the description of the 
+        task with be: "Image `num` on `total` equal `num/total` pourcent"
     """
     if roi == None:
         roi = getGeometryImage(image)
@@ -85,11 +109,15 @@ def export_image_to_GEE(image, asset_id="users/ab43536/", roi=None, name=None, n
                                          scale=30,
                                          region=roi.coordinates().getInfo(),
                                          )
+    # Run the task
     task.start()
+    return task
+
 
 #############################################
 #                   Python                  #
 #############################################
+
 
 def createJSONMetaData(filename, data):
     """ Export the data in JSON file
@@ -129,12 +157,36 @@ def list_reshape(one_D_list, n):
     return [one_D_list[i:i+n] for i in range(0, len(one_D_list), n)]
 
 
-
 def init_logger():
+    """ Init the logger
+    """
     level = logging.INFO
     format = '  %(message)s'
-    handlers = [logging.FileHandler(parameters.LOG_FILE), logging.StreamHandler()]
+    handlers = [logging.FileHandler(parameters.LOG_FILE),
+                logging.StreamHandler()]
 
     logging.basicConfig(level=level, format=format, handlers=handlers)
 
 
+def date_gap(date_start, date_end, nb_days_before=None, nb_days_after=None):
+    """ Remove "nb_days_before" days for the "date_start" 
+        and add "nb_days_after" for the "date_end"
+    Arguments:
+        :param date_start: starting date (python string)
+        :param date_end: ending date (python string)
+        :param nb_days_before: number of days to soustract to date_start
+        :param nb_days_after: number of days to add to date_end
+        :return: string dates
+    """
+    if nb_days_before == None:
+        nb_days_before = parameters.nb_days_before
+    if nb_days_after == None:
+        nb_days_after = parameters.nb_days_after
+
+    date_start = datetime.datetime.strptime(date_start, '%Y-%m-%d')
+    date_end = datetime.datetime.strptime(date_end, '%Y-%m-%d')
+
+    date_start = date_start - datetime.timedelta(days=nb_days_before)
+    date_end = date_end + datetime.timedelta(days=nb_days_after)
+
+    return str(date_start.strftime("%Y-%m-%d")), str(date_end.strftime("%Y-%m-%d"))

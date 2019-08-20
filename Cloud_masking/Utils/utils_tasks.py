@@ -84,3 +84,6 @@ def cancelAllTask(verbose=False):
                                                     "Task cancellation finished !", ""))
 
 
+if __name__ == "__main__":
+    # Show active task
+    getNumberActiveTask(verbose=True)

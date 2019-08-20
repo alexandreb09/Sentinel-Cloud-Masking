@@ -5,12 +5,20 @@
 #       - getAllImagesInColl(path)                  #
 #       - delete_assets(list_assets, silent)        #
 #       - move_list_file(source, dest, verbose)     #
+#       - getMetaDataImage(image)                   #
+#       - addMetaDataImage(mask)                    #
+#       - export_image_to_drive(image, roi, name,   #
+#                               folder)             #
+#       - exportImageListToDrive(image_to_run,      #
+#                                output_json,       #
+#                                drive_folder_name) #
+#                                                   #
 #####################################################
 
 
 from subprocess import check_output     # Run windows command from python
 import ee                               # GEE
-import time
+import time                             # Time module
 
 # Others functions
 import utils
@@ -195,5 +203,7 @@ def exportImageListToDrive(image_to_run, output_json="Metadata_mask.json", drive
                                                 "Export to drive finished !", ""))
 
 
-
-
+if __name__ == "__main__":
+    # Write the function to call
+    pass
+       

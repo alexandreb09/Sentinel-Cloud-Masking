@@ -1,6 +1,7 @@
 #####################################################
 # Methods file cloud Clustering process             #
 #                                                   #
+#                                                   #
 # Methods used from selecting the background        #
 #   - SelectBackgroundImages(sentinel_img,          #
 #                            number_of_images,      #
@@ -20,6 +21,7 @@ import normalization
 from parameters import PARAMS_CLOUDCLUSTERSCORE_DEFAULT
 import ee
 
+# Bands used in clustering process
 BANDS_MODEL = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12']
 
 
@@ -89,7 +91,6 @@ def SelectClusters(image, background_prediction, result_clustering,
 
     return multitemporal_score, reflectance_score
 
-
 def ClusterClouds(image,
                   background_prediction,
                   threshold_dif_cloud=.045,
@@ -118,15 +119,14 @@ def ClusterClouds(image,
         :return: ee.Image with 0 for clear pixels, 1 for cloudy pixels
     """
 
-    img_differences = image.subtract(background_prediction)
-    img_differences = img_differences.select(BANDS_MODEL)
+    img_differences = image.subtract(background_prediction).select(BANDS_MODEL)
 
     if do_clustering:
         training = img_differences.sample(region=region_of_interest,
                                         scale=30, numPixels=numPixels,
                                         tileScale=tileScale
                                         )
-        
+
 
         training, mean, std = normalization.ComputeNormalizationFeatureCollection(training,
                                                                                 BANDS_MODEL)
