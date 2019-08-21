@@ -8,6 +8,5 @@ Cloud_masking/Data
 /client_secrets.json
 /token.pickle
 /logs.log
-/test.csv
 
 /!**/__pycache__

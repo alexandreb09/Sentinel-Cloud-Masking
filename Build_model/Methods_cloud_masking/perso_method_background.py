@@ -1,14 +1,39 @@
+#####################################################
+# Set of methods used to find images                #
+# for building background image collection          #
+#                                                   #
+# Methods:                                          #
+#   - getImagesNeightboor(img, dataset_asc,         #
+#                         dataset_desc,             #
+#                         number_of_images)         #   
+#   - method1(sentinel_img, sentinel_collection,    #
+#             number_of_images)                     #
+#   - method2(sentinel_img, sentinel_collection,    #
+#             number_of_images, threshold_cc)       #
+#   - method3(sentinel_collection,                  #
+#             number_of_images)                     #
+#   - method4(sentinel_img, sentinel_collection,    #
+#             number_of_images, number_preselect)   #
+#   - method5(sentinel_img, sentinel_collection,    #
+#             number_of_images, number_preselect)   #
+#   - method6(image, sentinel_collection,           #
+#             number_of_images, threshold_cc,       #
+#             region_of_interest)                   #
+#   - method7(image, sentinel_collection,           #
+#             number_of_images, threshold_cc,       #
+#             region_of_interest)                   #
+#   - method8(image, sentinel_collection,           #
+#             number_of_images, threshold_cc,       #
+#             region_of_interest)                   #
+#                                                   #
+# NOTE: The methods 6, 7 and 8 haven't been         #
+#       introduced because they are two time        #
+#       time consuming                              #
+#####################################################
 import ee
-from Methods_cloud_masking.perso_tree import getMaskTree1, getMaskTree2, getMaskTree3
+from perso_tree import getMaskTree1, getMaskTree2, getMaskTree3
 
-#########################################
-# Set of methods used to find images    #
-# for building background               #
-#########################################
 
-#########################################
-# LE TRI DU JEU DE DONNEE COMPLET PEUT ETRE FACTORISE ...
-#########################################
 
 
 def getImagesNeightboor(img, dataset_asc, dataset_desc, number_of_images):

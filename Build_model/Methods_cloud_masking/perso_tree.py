@@ -1,6 +1,11 @@
-"""
-    Fonctions for performing tree mask methods
-"""
+#####################################################
+# Fonctions performing tree mask methods            #
+# Methods:                                          #
+#   - normalizedImage(image, coef_standard=10000)   #
+#   - getMaskTree1(image, roi)                      #
+#   - getMaskTree2(image, roi)                      #
+#   - getMaskTree3(image, roi)                      #
+#####################################################
 
 
 

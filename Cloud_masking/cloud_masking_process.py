@@ -241,7 +241,7 @@ if __name__ == "__main__":
     # Initiate GEE connexion
     ee.Initialize()
     # Initiate logger
-    init_logger()
+    init_logger(parameters.LOG_FILE)
 
     # Load image name from images already processed
     # (image exported from the GEE storage)
@@ -250,8 +250,8 @@ if __name__ == "__main__":
         with open(parameters.JSON_FILE, 'r') as f:
             data = json.load(f)
         image_done = list(data.keys())
-
+        
     # Luanch process
-    process_and_store_to_GEE(folder_GEE='users/ab43536/masks_4_methods',
-                             excel_file="Cloud_masking/current_status.xlsx",
-                             image_to_exclude=image_done)
+    # process_and_store_to_GEE(folder_GEE='users/ab43536/masks_4_methods',
+    #                          excel_file="Cloud_masking/current_status.xlsx",
+    #                          image_to_exclude=image_done)

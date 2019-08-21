@@ -10,7 +10,7 @@ This repository only contains scripts for Cloud masking. All the interpolations 
 
 ## WorkFlow Cloud masking
   
-  1. Setup the **parameters** in `Cloud_masking\parameters.py` file  (Python side).
+  1. Setup the **parameters** in `Cloud_masking\parameters.py` file (Python side).
 	  - The model requires: 
 		  - a date range: starting date (`date_start`) and end date (`date_end`) of the analysis. Provided in string format : "YYYY-MM-DD".
 			**NOTE**: the `nb_days_before` and `nb_days_after` will add extra days in the date range. This is usefull for the interpolation (adding some extra images around the date range).
@@ -21,9 +21,9 @@ This repository only contains scripts for Cloud masking. All the interpolations 
 				- You can use the GEE Code Editor, draw a polygon on the map over the area of interest and copy past the coordinates. 
 			- `land_geometry`:
 				- String: a path to GEE Feature collection. Ex: `"users/ab43536/UK_border"` for the UK border (source: https://www.eea.europa.eu/data-and-maps/data/eea-reference-grids-2/gis-files/great-britain-shapefile)
-				- This is used to mask data outside the geometry. Usefull for masking ocean, others country).
+				- This is used to mask data outside the geometry. It's usefull for masking ocean, others country.
 				- If the image do not intersect the geometry, the image is ignored.
-				- This can be a feature collection with quite a high resolution. The GEE Code Editor allows to import shapefile.
+				- This can be a feature collection with quite a high resolution. The GEE Code Editor allows to import shapefile. See these [explanations](https://developers.google.com/earth-engine/importing)
 	
 	  - This file also includes the parameters for the model itself such as:
 		  - `CUTTOF`: random forest cuttof
@@ -32,17 +32,17 @@ This repository only contains scripts for Cloud masking. All the interpolations 
 
   2. Process the Cloud Masking process  by running the `Cloud_masking\cloud_masking_process.py` file (Python side).
 	  - This script is iterating over all the image (from GEE Sentinel2 dataset) matching the time and area constraints defined in `Cloud_masking\parameters.py` file.
-	  - Each image is exported to **Google Earth Engine memory as an Asset**. One task is assigned to each image.
+	  - Each image is exported to **Google Earth Engine storage as an Asset**. One task is assigned to each image.
 	  - **Restrictions** : 
 	    - **The number of tasks** running at the same time is limited to **3000**. The parameters `nb_task_max` (in parameters file) defines the maximum number of tasks running at the same time. The script is updating the tasks list every 30s.
 	    - **The number of assets** stockable in GEE is limited to **10 000** assets (and a total memory of 250 Go). If you want to process more than 10000 images, refers to the section [Handle limitation](#handle-gee-limitations). 
 	
-**NOTE**: If the script stops for any reason (GEE restrictions, user stops process...), the `logs\logs.log` file provides informations on which images have been proceeded. 
- - At the same time the `Cloud_masking\cloud_masking_process.py` script is running, a `xlsx` file is creating saving all the images proceeded. The default location is `Cloud_masking\current_status.xlsx`. This file contains for each rows (image) the current state (task running, completed, waiting...). This file is really important to avoid looping over images that do not intersect the `land_geometry`.
- - If the script fails, the currrent state of the task is lost. The `.xlsx` file becomes **inconsistent**. The safer way to repare it is:
- 	- to wait till the current tasks finish and, then,  set the "`Result`" column to `COMPLETED`. The script can then be rerun.
-	- OR to cancel all the current running tasks. Then you can cloud masking process could be rerun. To cancel all the running task, you can cancel them from the Web interface (tab task) or by running the `cancelAllTask()` methods from the `Cloud_masking/Utils/utils_tasks.py` file.
-- It's also possible to pass some images to ignore through the `image_to_exclude` argument in `process_and_store_to_GEE` function from `Cloud_masking\cloud_masking_process.py` file.
+**NOTE**: If the script fails or is stoped for any reasons (GEE restrictions, user stops process...), the `logs\logs.log` file provides informations on which images have been proceeded. 
+ - At the same time the `Cloud_masking\cloud_masking_process.py` script is running, a `xlsx` file is creating saving all the images proceeded. The default location is `Cloud_masking\current_status.xlsx`. This file contains for each rows (image) the current state (task running, completed, waiting...). This file is important to avoid looping over images that do not intersect the `land_geometry`.
+ - If the script fails, the currrent state of the task is lost. The `.xlsx` file becomes **inconsistent**. The safer way to repare it is do one of the below:
+ 	- wait till the current tasks finish and, then,  set the "`Result`" column to `COMPLETED`. The script can then be rerun.
+	- cancel all the current running tasks. Then, the cloud masking process could be run again. To cancel all the running task, you can cancel them from the Web interface (tab task) or by running the `cancelAllTask()` methods from the `Cloud_masking/Utils/utils_tasks.py` file.
+- Some specific images might be ignored using the `image_to_exclude` argument in `process_and_store_to_GEE` function from `Cloud_masking\cloud_masking_process.py` file. This parameters is useful to ignore images exported outside GEE.
 
 ## Handle GEE limitations
 - Number of asset restriction: 

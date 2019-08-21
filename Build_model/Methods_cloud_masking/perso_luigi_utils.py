@@ -1,18 +1,35 @@
+#########################################################
+# Utils file                                            #
+# Functions:                                            #
+#   - callback_function_bg(numMethod, sentinel_img,     #
+#                          sentinel_collection,         #
+#                          number_of_images,            #
+#                          threshold_cc,                #
+#                          number_preselect,            #
+#                          region_of_interest)          #
+#   - cleanScreen()                                     #
+#   - getGeometryImage(image)                           #
+#   - getIdImageInImageCollection(imgColl)              #
+#   - export_as_asset(image,                            #
+#                     region_of_interest,               #
+#                     description, scale, assetId)      #
+#########################################################
+
 import subprocess
 import ee
-from Methods_cloud_masking.perso_method_background import *
+from perso_method_background import *
 
 
-def getImageBoundList(image):
-    # Region of interest
-    ROI = image.get("system:footprint").getInfo().coordinates
-    return ee.Geometry.Polygon(ROI)
+# def getImageBoundList(image):
+#     # Region of interest
+#     ROI = image.get("system:footprint").getInfo().coordinates
+#     return ee.Geometry.Polygon(ROI)
 
 
-def getCenterPointFromImage(image):
-    lineRing = image.getInfo()['properties']['system:footprint']
-    center = ee.Array(lineRing.coordinates)
-    return center.reduce(ee.Reducer.mean(), [0]).getInfo()['0']
+# def getCenterPointFromImage(image):
+#     lineRing = image.getInfo()['properties']['system:footprint']
+#     center = ee.Array(lineRing.coordinates)
+#     return center.reduce(ee.Reducer.mean(), [0]).getInfo()['0']
 
 
 def callback_function_bg(numMethod, sentinel_img, sentinel_collection, number_of_images, threshold_cc, number_preselect,
@@ -90,21 +107,6 @@ def getIdImageInImageCollection(imgColl):
     return id_list.getInfo()
 
 
-def print_image_GEE_code(liste):
-    print('-' * 10)
-    for i, l in enumerate(liste):
-        print(
-            'Map.addLayer(ee.Image("COPERNICUS/S2/' + l[2:] \
-            + '"), imageVisParam, "img' + str(i) + '");')
-
-def print_list_to_imageCollection(liste, delta=2):
-    print("ee.ImageCollection([")
-    for l in liste:
-        print(
-            'ee.Image("COPERNICUS/S2/' + l[delta:] + '"),')
-    print(']);')
-
-
 def export_as_asset(image, region_of_interest, description='background-export',
                     scale=30, assetId='users/ab43536/background'):
     """
@@ -123,5 +125,5 @@ def export_as_asset(image, region_of_interest, description='background-export',
         assetId=assetId,
         region=region_of_interest.coordinates().getInfo(),
     ).start()
-    print("Brillant ! Exportation has started !")
+    print("Good job ! Exportation has started !")
     

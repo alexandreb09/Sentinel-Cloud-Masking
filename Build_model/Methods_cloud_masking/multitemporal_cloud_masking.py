@@ -8,17 +8,16 @@ Created on June 12, 2016
 
 import ee
 import random
-from Methods_cloud_masking import kernel
-from Methods_cloud_masking import converters
-from Methods_cloud_masking import time_series_operations
-from Methods_cloud_masking import normalization
-from .clustering import ClusterClouds
-from Methods_cloud_masking.perso_parameters import SENTINEL2_BANDNAMES, \
-                                             PARAMS_CLOUDCLUSTERSCORE_DEFAULT, \
-                                             PARAMS_SELECTBACKGROUND_DEFAULT, \
-                                             CC_IMAGE_TOP
-from Methods_cloud_masking.perso import PredictPercentile, \
-                                  PreviousImagesWithCCSentinel
+import kernel
+import converters
+import time_series_operations
+import normalization
+from clustering import ClusterClouds
+from perso_parameters import SENTINEL2_BANDNAMES, \
+                            PARAMS_CLOUDCLUSTERSCORE_DEFAULT, \
+                            PARAMS_SELECTBACKGROUND_DEFAULT, \
+                            CC_IMAGE_TOP
+from perso import PredictPercentile, PreviousImagesWithCCSentinel
 import logging
 
 

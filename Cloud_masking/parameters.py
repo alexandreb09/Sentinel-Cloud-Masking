@@ -135,7 +135,7 @@ COMMON_AREA: int = 0.95
 #########################################
 # GEE folder where the images are stored
 # The images contained in this folder are ignored (not processed again)
-folder_GEE = 'users/ab43536/default_name'
+folder_GEE = 'users/ab43536/masks_4_methods'
 
 # Number of GEE tasks running at the same time
 # GEE restriction: must be below 3000
@@ -165,4 +165,4 @@ SENTINEL2_BANDNAMES: list = ['B1', 'B2', 'B3', 'B4', 'B5',
                              'B10', 'B11', 'B12', 'QA60']
 
 # Log File name
-LOG_FILE: str = "logs/logs.log"
+LOG_FILE: str = "./logs/logs.log"

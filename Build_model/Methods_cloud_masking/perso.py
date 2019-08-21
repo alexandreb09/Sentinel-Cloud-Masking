@@ -1,63 +1,34 @@
-"""
-    Fonctions implementing background images
-"""
+#####################################################
+# Fonctions implementing background images          #
+# Methods:                                          #
+#   - filter_partial_tiles(images_background, image,#
+#                          region_of_interest)      #
+#   - PreviousImagesWithCCSentinel(methodNumber,    #
+#                sentinel_img, number_of_images,    #
+#                threshold_cc, number_preselect,    #
+#                region_of_interest, include_img)   #
+#   - PredictPercentile(method_number, img,         #
+#                       region_of_interest,         #
+#                       number_of_images,           #
+#                       number_preselect,           #
+#                       threshold_cc)               #
+#   - getMaskGEE(image)                             #
+#####################################################
 
-##########################################
-#              Functions                 #
-##########################################
-from Methods_cloud_masking.perso_parameters import *
-from Methods_cloud_masking.perso_luigi_utils import callback_function_bg
+
+from perso_parameters import *
+from perso_luigi_utils import callback_function_bg
 import ee
 
 
-
-def add_ndvi_bands(image):
-    return image.addBands(image.normalizedDifference([NIR, RED]))
-
-
-def add_evi_bands(image):
-    # Formula : 2.5 * (NIR - RED) / ((NIR + 6*RED - 7.5*BLUE) + 1)
-    L = 1
-    C1 = 6
-    C2 = 7.5
-    red = image.select(RED)
-    blue = image.select(BLUE)
-    nir = image.select(NIR)
-    numerateur = nir.subtract(red)
-    denominateur = nir.add(red.multiply(C1)).subtract(blue.multiply(C2)).add(L)
-    evi = numerateur.divide(denominateur).multiply(2.5)
-    return image.addBands(evi)
-
-
-def rename_bands_ft(image):
-    # Rename the bands: 4 -> NDVI ; 5 -> EVI
-    old_bands = image.bandNames()
-    new_bands = old_bands.set(4, 'NDVI').set(5, "EVI")
-    return image.select(old_bands, new_bands)
-
-def ComputeCloudCoverGeomSentinel(img, region_of_interest):
-    """Compute mean cloud cover and add it as property to the image"""
-    # Undefined for sentinel !
-    # clouds = ee.Algorithms.Landsat.simpleCloudScore(img).gte(50)
-
-    # clouds= img
-
-    # clouds_original = image_predict_clouds.select("fmask").eq(2)
-    # clouds_original = clouds_original.where(image_predict_clouds.select("fmask").eq(4),2)
-
-    # Add growing to the mask
-
-    # clouds = clouds_original.reduceNeighborhood(ee.Reducer.max(),
-    #                                            ee.Kernel.circle(radius=3))
-    # clouds = ee.Algorithms.Landsat.simpleCloudScore(img).select("cloud").gt(50).toFloat()
-
-    # dictio = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=region_of_interest,
-    #                             bestEffort=True)
-    # numerito = ee.Number(dictio.get("CLOUDY_PIXEL_PERCENTAGE")) #.multiply(100)
-    img = img.set("CC", img.get('CLOUDY_PIXEL_PERCENTAGE'))
-    return img
-
 def filter_partial_tiles(images_background, image, region_of_interest):
+    """ Filter images having less than 99% common area with the naalysed image
+    Arguments:
+        :param images_background: candidates image (background)
+        :param image: image cloud analysed
+        :param region_of_interest: 
+        :return: background images filtered
+    """
 
     def set_area_roi(image):
         image = ee.Image(image)
@@ -135,11 +106,6 @@ def PreviousImagesWithCCSentinel(methodNumber, sentinel_img, number_of_images, t
 
     imgColl = imgColl.map(_count_valid).sort("valids").limit(number_of_images)
 
-    # from Methods_cloud_masking.perso_luigi_utils import print_image_GEE_code
-    # from Methods_cloud_masking.perso_luigi_utils import getIdImageInImageCollection
-    # from Methods_cloud_masking.perso_luigi_utils import print_list_to_imageCollection
-    # print_list_to_imageCollection(getIdImageInImageCollection(imgColl), 0)
-
     return imgColl
 
 
@@ -159,11 +125,6 @@ def PredictPercentile(method_number, img, region_of_interest, number_of_images,
                                             threshold_cc, number_preselect,
                                             region_of_interest, include_img=False,
                                             )
-    # from Methods_cloud_masking.perso_luigi_utils import print_image_GEE_code, \
-    #                                                     getIdImageInImageCollection, \
-    #                                                     print_list_to_imageCollection
-    # print_image_GEE_code(getIdImageInImageCollection(imgColl))
-    # print_list_to_imageCollection(getIdImageInImageCollection(imgColl), delta=0)
 
     img_percentile = imgColl.reduce(reducer = ee.Reducer.percentile(percentiles = [50]))
     return img_percentile
@@ -175,6 +136,10 @@ def PredictPercentile(method_number, img, region_of_interest, number_of_images,
 # GEE Cloud Mask                   #
 ####################################
 def getMaskGEE(image):
+    """ Compute the default GEE mask
+    Arguments:
+        :param image: 
+    """
     qa = image.select('QA60')
 
     cloudBitMask = 1 << 10              # Bit 10 is cloud
@@ -182,24 +147,4 @@ def getMaskGEE(image):
 
     # Both flags should be set to zero, indicating clear conditions.
     mask = qa.bitwiseAnd(cloudBitMask).eq(0).And(qa.bitwiseAnd(cirrusBitMask).eq(0))
-
     return mask.Not()
-
-
-
-"""
-def exportToDrive(image):
-    params = {
-        'fileNamePrefix':'imageRGB',
-        'folder':'datasetTestAberdeen',
-        'image':image, # cast bands
-        'description': 'description imageRGB',
-        'scale': 30,
-        'maxPixels':1e13
-    }
-    print("Début exportation ...")
-    task = ee.batch.Export.image.toDrive(**params)
-    # Import module for batch !
-    # batch.Task.start(task)
-    print("Exportation terminée :-)")
-"""

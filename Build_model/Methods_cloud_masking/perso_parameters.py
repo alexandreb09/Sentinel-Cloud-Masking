@@ -7,14 +7,17 @@ import ee
 #Bands names for Sentinel2
 SENTINEL2_BANDNAMES: list = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12', 'QA60']
 
+# Bands code and name
 RED: str = 'B4'
 GREEN: str = 'B3'
 BLUE: str = 'B2'
 NIR: str = 'B8'
+# Image output dimension
 IMAGE_DIM: str = "600x600"
+# Sentinel name
 DATASET_INDEX: str = "COPERNICUS/S2"
 
-
+# Custom parameters for the different methods (1 to 5)
 PARAMS_SELECTBACKGROUND_DEFAULT: dict = {
     "number_of_images": 20,
     "method_number": 1,
@@ -23,6 +26,7 @@ PARAMS_SELECTBACKGROUND_DEFAULT: dict = {
 
 # Default parameters for cloud clustering
 PARAMS_CLOUDCLUSTERSCORE_DEFAULT: dict = {
+    "method": "percentile",
     "threshold_cc": 20,
     "sampling_factor": .05,
     "lmbda": 1e-6,
@@ -40,6 +44,7 @@ PARAMS_CLOUDCLUSTERSCORE_DEFAULT: dict = {
     "tileScale": 2,
 }
 
+# Image test id
 IMAGE_NAMES: dict = {
     1: DATASET_INDEX + '/' + '20180602T113321_20180602T113333_T30VVJ',
     2: DATASET_INDEX + '/' + '20180205T114351_20180205T114345_T30VUK',
@@ -49,7 +54,7 @@ IMAGE_NAMES: dict = {
     6: DATASET_INDEX + '/' + '20180225T105019_20180225T105018_T31TDJ',  # Toulouse
 }
 
-         
+# Simple geometry for above images
 GEOMETRY_PER_IMAGE: dict = {
     1: [[[-4.02762316402640, 56.93400615151729],
          [-4.02762316402640, 56.76616719378319],

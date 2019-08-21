@@ -1,8 +1,43 @@
+#############################################################
+# File to build the training and test set                   #
+# Methods:                                                  #
+#       - newColumnsFromImage(df, mask_prev,                #
+#                             isTreeMethod, geometry)       #
+#       - apply_all_methods_save(filename, sheetname)       #
+#                                                           #
+# This file is used after having preprocess the H5 and      #
+# assumes the excel file has been created                   #
+#                                                           #
+# What this script is doing:                                #
+#   - Iterate over all the images in the excel file         #
+#     according the "ig_GEE" columns                        #
+#       -  Iterate over the 13 cloud masking methods        #
+#          (percentile 1 to 5, persistence 1 to 5 and       #
+#          tree 1 to 3). For each method:                   #
+#           - Apply the cloud mask the GEE image            #
+#           - Extract the values from the result image      #
+#       - Save the results in the excel file                #
+#                                                           #
+# Note: For each method, the scrip is iterating until       #
+#       the GEE request is successful. Indeed, acccording   #
+#       to the charge on the GEE, the request might fails.  #
+#       Rerunning the same task might solve it.             #
+#                                                           #
+#       If the "Background cloud masking" method fails,     #
+#       the image is ignore and the results are save in the #
+#       excel file.                                         #
+#                                                           #
+#       The current script doesn't use a logger, just calls #
+#       "print" to output current status. The logs are      #
+#       NOT save.                                           #
+#############################################################
+
 import os
 import sys
 import ee
 import pandas as pd
 import numpy as np
+
 currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
@@ -14,26 +49,16 @@ from Upload_Data.utils import startProgress, progress, endProgress, export_df_to
 
 def newColumnsFromImage(df, mask_prev, isTreeMethod, geometry):
     """
-    Return the result of
+    For each pixels in DF, returns the values in the "mask_prev"
     Arguments:
         :param df:
         :param mask_prev: predicted image
         :param isTreeMethod: boolean for the key in the Google Earth Engine dictionary
     """
-
-    key = "cluster"
-    if isTreeMethod: key = "constant"
-    key = mask_prev.bandNames().get(0)
-
-    # Get coordinates
-    coordinates = df[["index", "longitude", "latitude"]].values.tolist()
-
-    # GEE array of coordinate
-    array_coordinate_GEE = ee.List(coordinates)
-
-    # Row is compose by :
     def get_pixel_result(row):
         """
+        Read a GEE list composed of the pixel ID, longitude and latitude
+        and return the values of the mask for this pixel
         Arguments:
             :param row: ee.List([id, long, lat])
             :return:    ee.List([id, res])
@@ -41,9 +66,9 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod, geometry):
         row = ee.List(row)
         point = ee.Geometry.Point(row.slice(1, 3))
         # Check if longitude - lattitude aren't swiped
-        point = point = ee.Geometry.Point(ee.Algorithms.If(point.containedIn(geometry),
-                                                           point.coordinates(),
-                                                           point.coordinates().reverse()))
+        point = ee.Geometry.Point(ee.Algorithms.If(point.containedIn(geometry),
+                                                   point.coordinates(),
+                                                   point.coordinates().reverse()))
         # Apply reduction : extract pixel result
         val = mask_prev.reduceRegion(ee.Reducer.first(), point, 20).get(key)
         # Replace None value by -1
@@ -53,6 +78,17 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod, geometry):
                                                 val,
                                                 -1))
         return row.slice(0, 1).add(val)
+
+    # key = "cluster"
+    # if isTreeMethod: key = "constant"
+    key = mask_prev.bandNames().get(0)
+
+    # Get coordinates
+    coordinates = df[["index", "longitude", "latitude"]].values.tolist()
+
+    # GEE array of coordinate
+    array_coordinate_GEE = ee.List(coordinates)
+
     # GEE object : list of prediction for each pixel (1 x nb_pixels)
     new_col = array_coordinate_GEE.map(get_pixel_result)
 
@@ -60,89 +96,30 @@ def newColumnsFromImage(df, mask_prev, isTreeMethod, geometry):
     return new_col.getInfo()
 
 
-# def applyTreeMasking(df, method_name):
-#     """
-#     Arguments:
-#         :param df: dataframe to process
-#     """
-#     # progress bar
-#     startProgress("Execution method" + method_name)
-
-#     # For each images e.g. pixels from same image
-#     for i, (name, df_pixels) in enumerate(df.groupby("id_GEE")):
-#         # Create GEE Image
-#         image = ee.Image(name)
-#         # Apply tree1 cloud detection
-#         maskTree1 = getMaskTree3(image)
-
-#         df.loc[df.id_GEE == name, method_name] = newColumnsFromImage(
-#             df_pixels, maskTree1, True)
-
-#         # Update progress bar
-#         progress(i * 100/80)
-
-#     endProgress()
-#     print(df)
-#     return df
-
-
-# def apply_method_1_to_5(df, method_name):
-#     """
-#     Arguments:
-#         :param df: df to process
-#     """
-#     # progress bar
-#     startProgress("Execution method 1 à 5")
-
-#     # For each images e.g. pixels from same image
-#     for i, (name, df_pixels) in enumerate(df.groupby("id_GEE")):
-#         # Create GEE Image
-#         image = ee.Image(name)
-#         region_of_interest = getGeometryImage(image)
-
-#         for i in range(1, 6):
-#             cloud_score_persistence = CloudClusterScore(image,
-#                                 region_of_interest,
-#                                 method_pred="percentile")[0]
-#             method_cour_name = method_name + "_" + str(i)
-#             df.loc[df.id_GEE == name, method_cour_name] =
-#                       newColumnsFromImage(df_pixels, cloud_score_persistence,False)
-
-#         for i in range(1, 6):
-#             cloud_score_persistence = CloudClusterScore(image,
-#                                                         region_of_interest,
-#                                                         method_pred="persistence")[0]
-#             method_cour_name = method_name + "_" + str(i)
-#             df.loc[df.id_GEE == name, method_cour_name] =
-#              newColumnsFromImage(df_pixels, cloud_score_persistence, False)
-
-#         df.loc[df.id_GEE == name, "tree1"] = newColumnsFromImage(
-#             df_pixels, getMaskTree1(image), True)
-#         df.loc[df.id_GEE == name, "tree2"] = newColumnsFromImage(
-#             df_pixels, getMaskTree2(image), True)
-#         df.loc[df.id_GEE == name, "tree3"] = newColumnsFromImage(
-#             df_pixels, getMaskTree3(image), True)
-
-#         df.to_excel("Data/training.xlsx")
-#         # Update progress bar
-#         progress(i * 100/80)
-
-#     endProgress()
-#     print(df)
-#     return df
 
 
 def apply_all_methods_save(filename, sheetname):
-    """
+    """ Read an excel file 
+        For each images: 
+            - Apply all the methods [percentile 1 to 5, persistence 1 to 5, tree 1 to 3]
+            - Save the output for each pixel in a "result" dataframe
+    Results: saved in the same excel file (same sheet) in the matching columns
+    
+    This process is quite long. The request might face GEE restriction. 
+    The script is looping (infinite loop) till the success. 
+
+    If the process failed or is stopped, the script is reading the "percentile1" columns
+    to find the rows proceeded. The script will ignore all the rows where there is 
+    data in "percentile1" column.
+
     Arguments:
-        :param filename: filename to process
+        :param filename: excel files with the ["index", "longitude", "latitude"] columns
+        :param sheetname: sheetname in the excel file
     """
     list_errors = []
 
     #  Read the excel file
     df_total = pd.read_excel(filename, sheet_name = sheetname)
-
-    # df_total["index"] = [i for i in range(df_total.shape[0])]
 
     # Boolean vector of image to process
     boolean_vector_todo = df_total["percentile1"].isnull()
@@ -153,47 +130,50 @@ def apply_all_methods_save(filename, sheetname):
     # Nb images totals
     nb_images_total = len(df_todo["id_GEE"].unique())
 
-    # for _ in range(image_already_done, nb_group + 1):
+    # Iterate per images (sub dataframe for each image)
     for i, (name, df_pixels) in enumerate(df_todo.groupby("id_GEE")):
-
         # Boolean vector of image to process
         boolean_vector_todo = df_total["percentile1"].isnull()
 
-        # Split total dataframe en already done and todo
+        # Split total dataframe in already done and todo
         df_todo = df_total[boolean_vector_todo].sort_values("id_GEE")
         df_done = df_total[~boolean_vector_todo].sort_values("id_GEE")
 
+        # Some logs
         nb_pixels_todo = df_todo.shape[0]
         nb_pixels_done = df_done.shape[0]
         nb_image_done = len(df_done["id_GEE"].unique())
         nb_image_todo = len(df_todo["id_GEE"].unique())
-
         print("Image name: {0}".format(name))
         print("Nb images done: %2d e.g. %5d pixels" % (nb_image_done, nb_pixels_done))
         print("Nb images todo: %2d e.g. %5d pixels" % (nb_image_todo, nb_pixels_todo))
-        print("Progression: %2.2f %%" % (i/nb_images_total*100))
+        print("Progression: %2.2f %%" % (i / nb_images_total * 100))
+        
         # Create GEE Image - ROI
         image = ee.Image(name)
         region_of_interest = getGeometryImage(image)
 
-        list_methods = [(x, y) for x in ["percentile", "persistence"] for y in range(1,6)]
+        # Iterate over all the "percentile" and "persistence" methods
+        list_methods = [(x, y) for x in ["percentile", "persistence"] for y in range(1, 6)]
         for method_name, method_number in list_methods:
+            # Method name (for ex: "persistence1")
             method_cour_name = method_name + str(method_number)
 
             print(" " * 5 + "- Method used: " + method_name + " " + str(method_number))
             stop = False
             while not stop:
                 try:
+                    # GEE cloud mask
                     cloud_score_image = CloudClusterScore(image,
-                                                                region_of_interest,
-                                                                method_number=method_number,
-                                                                method_pred=method_name)[0]
+                                                        region_of_interest,
+                                                        method_number=method_number,
+                                                        method_pred=method_name)[0]
 
                     # Google answer (Python object)
                     pixel_res = np.array(newColumnsFromImage(df_pixels,
-                                                                cloud_score_image,
-                                                                False,
-                                                                region_of_interest))
+                                                            cloud_score_image,
+                                                            False,
+                                                            region_of_interest))
                     # Create df from GEE answer
                     new_df = pd.DataFrame({
                         "index": pixel_res[:, 0],
@@ -201,10 +181,12 @@ def apply_all_methods_save(filename, sheetname):
                     })
                     stop = True
 
-
+                # Handle GEE exception
                 except ee.ee_exception.EEException as e:
                     print(" " * 10 + "Error GEE occurs:", e)
 
+                    # If the script fails due to no data:
+                    # The image is ignored
                     if str(e)[:18] == 'Dictionary.toArray':
                         print(" " * 15 + "Images skiped")
 
@@ -219,15 +201,17 @@ def apply_all_methods_save(filename, sheetname):
             # Update the column of current method on "index" index
             df_total = new_df.combine_first(df_total)
 
+        # Apply the 3 "decision tree" methods
         for method in ["tree1", "tree2", "tree3"]:
             print(" " * 5 + "- Method used: {0}".format(method))
+            # loop while the GEE request successes
             stop = False
             while not stop:
+                # Handle GEE exception
                 try:
                     # Google answer (Python object)
                     pixel_res = np.array(newColumnsFromImage(df_pixels, getMaskTree1(image),
                                                              True, region_of_interest))
-
                     stop = True
                 except ee.ee_exception.EEException as e:
                     print(" " * 10 + "Error GEE occurs:", e)
@@ -248,35 +232,11 @@ def apply_all_methods_save(filename, sheetname):
     print("!" * 58 + "\n" + "!" * 5 + " " * 20 + "FINISHED" + " " * 20 + "!" * 5 + "\n" + "!" * 58)
     print("\n\n" + str(len(list_errors)) + " occured: ", list_errors)
 
-def find_problematic_pictures(filename):
-    """
-    Display all the problematic pictures (cloudclustering not working)
-    Arguments:
-        :param filename: 
-    """
-    df = pd.read_excel(filename)
-    nb_group = len(df.groupby("id_GEE"))
 
-    for i, (name, df_pixels) in enumerate(df.groupby("id_GEE")):
-        # Create GEE Image
-        image = ee.Image(name)
-        region_of_interest = getGeometryImage(image)
-
-        cloud_score_image = CloudClusterScore(image,
-                                                region_of_interest,
-                                                method_number=1,
-                                                method_pred="persistence")[0]
-        try:
-            cloud_score_image.getInfo()
-        except ee.ee_exception.EEException:
-            print(name)
-        print("Image: {0}/{1} = {2} %".format(i+1, nb_group,(i+1)/nb_group*100))
 
 if __name__ == "__main__":
+    # Initiate GEE connection
     ee.Initialize()
-    # df_training = pd.read_excel("Data/training.xlsx")
-    # print(df_training)
-    # df_res = apply_method_1_to_5(df_training, method_name)
 
     file_name = "Data/Evaluation.xlsx"
     sheet_name = "Evaluation"

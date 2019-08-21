@@ -15,7 +15,7 @@ import requests
 from collections import namedtuple
 import time
 import tempfile
-from Methods_cloud_masking .file_utils import addFormat, createTempFile
+from file_utils import addFormat, createTempFile
 import shutil
 import logging
 

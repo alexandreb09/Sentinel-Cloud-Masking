@@ -1,3 +1,23 @@
+#########################################################
+# Utils file                                            #
+#                                                       #
+# Methods:                                              #
+#       - getDates(granule)                             #
+#       - splitH5File(filename, output_f1, output_f2)   #
+#       - export_df_to_excel(df, sheetname, filename)   #
+#       - export_df_train_eval_to_excel(df_training,    #
+#                                       df_evaluation,  #
+#                                       filename)       #
+#       - mergeTrainingDataset(output_file)             #
+#       - mergeEvalDataset(file_source, file_out)       #
+#       - add_row(df, row)                              #
+#       - deletefile(filename)                          #
+#                                                       #
+#       - startProgress(title)                          #
+#       - progress(x)                                   #
+#       - endProgress()                                 #
+#########################################################
+
 import ee
 from datetime import datetime, timedelta
 import pandas as pd
@@ -10,6 +30,7 @@ def getDates(granule):
     """ Read a Sentinel image ID and extract the beginning and finishing date
     Arguments:
         :param granule: Sentinel Image ID
+        :return: begining date and finishing date
     """
 
     def format_date(date):
@@ -24,9 +45,9 @@ def getDates(granule):
 
     details = granule.split("_")
     date_fin = format_date(details[5][:8])
-    date_deb1 = format_date(details[7][1:9])
-    date_deb2 = format_date(details[8][:8])
-    date_deb = min(date_deb1, date_deb2)
+    date_start1 = format_date(details[7][1:9])
+    date_start2 = format_date(details[8][:8])
+    date_deb = min(date_start1, date_start2)
 
     if (date_deb == date_fin):
         date_fin = add_one_day(date_fin)
@@ -34,57 +55,12 @@ def getDates(granule):
     return date_deb, date_fin
 
 
-# def addBands(image, band, new_band_name, old_band_name='constant'):
-#     """ Add a band to an image
-#         Rename the first band name matching to the "old_band_name" by the new name
-#     Arguments:
-#         :param image: Image to add bands
-#         :param band: Band to add
-#         :param new_band_name: Name for the band to add
-#         :param old_band_name='constant': default name 
-#     """
-#     image = image.addBands(band)
-#     new_band_names = image.bandNames().replace(old_band_name, new_band_name)
-#     return image.select(image.bandNames(), new_band_names)
-
-
-def add_row(df, row):
-    """ Add a row at the end of the dataframe
-    Arguments
-        :param df: dataframe
-        :param row: row to add
-    """
-    df.loc[-1] = row
-    df.index = df.index + 1
-    return df.sort_index()
-
-
-# Progress bar
-def startProgress(title):
-    global progress_x
-    sys.stdout.write(title + ": [" + "-" * 50 + "]" + chr(8) * 51)
-    sys.stdout.flush()
-    progress_x = 0
-
-
-def progress(x):
-    global progress_x
-    x = int(x * 50 // 100)
-    sys.stdout.write("#" * (x - progress_x))
-    sys.stdout.flush()
-    progress_x = x
-
-
-def endProgress():
-    sys.stdout.write("#" * (50 - progress_x) + "]\n")
-    sys.stdout.flush()
-
-
 def splitH5File(filename, output_f1="new_file_part1.h5", output_f2="new_file_part2.h5"):
     """
     Split the .h5 file in two files (same size)
-    Argument: filename
-        param filename: file name
+    Using one single file was too slow...
+    Argument: 
+        :param filename: file name
         :param output_f1="new_file_part1.h5": 
         :param output_f2="new_file_part2.h5": 
     """
@@ -110,6 +86,10 @@ def splitH5File(filename, output_f1="new_file_part1.h5", output_f2="new_file_par
                 elif key in key_copy_part:
                     f_new.create_dataset(key, data=f_old[key][nb_rows//2:])
 
+
+#################################################
+#              Pandas exports                   #
+#################################################
 
 def export_df_to_excel(df, sheetname, filename="Data/results.xlsx"):
     """
@@ -142,16 +122,23 @@ def export_df_train_eval_to_excel(df_training, df_evaluation, filename="Data/res
         writer.save()
 
 
-def mergeTrainingDataset():
-    df1 = pd.read_excel(
-        "./Data/results - JH.xlsx", "Training")
-    df2 = pd.read_excel(
-        "./Data/results - PC-ALEX.xlsx", "Training")
+def mergeTrainingDataset(output_file="Data/results.xlsx"):
+    """ Split data into valid and invalid sheet
+        Used for TRAINING dataset
+        A "-1" means the method failed
+    Arguments:
+        :param file_source="./Data/Evaluation.xlsx": source file
+        :param file_out="Data/results.xlsx": output file
+    """
+    # Read 2 files
+    df1 = pd.read_excel("./Data/results - JH.xlsx", "Training")
+    df2 = pd.read_excel("./Data/results - PC-ALEX.xlsx", "Training")
 
     # Fusion
     df = df1.append(df2)
 
-    # Split rows having -1 as values
+    # Filter rows having at least one "-1" as values
+    # "-1" meens the method failed
     valid_pixels = (df == -1).any(axis=1)
     df_invalid = df[valid_pixels]
     df_valid = df[~valid_pixels]
@@ -159,15 +146,23 @@ def mergeTrainingDataset():
     print("nb pixels invalid: ", df_invalid.shape[0])
     print("nb pixels valid: ", df_valid.shape[0])
 
-    export_df_to_excel(df_valid, "Training", filename="Data/results.xlsx")
-    export_df_to_excel(df_invalid, "Invalids_training",
-                       filename="Data/results.xlsx")
+    export_df_to_excel(df_valid, "Training", filename=output_file)
+    export_df_to_excel(df_invalid, "Invalids_training", filename=output_file)
 
 
-def mergeEvalDataset():
-    df = pd.read_excel("./Data/Evaluation.xlsx", "Evaluation")
+def mergeEvalDataset(file_source="./Data/Evaluation.xlsx", file_out="Data/results.xlsx"):
+    """ Split data into valid and invalid sheet
+        Used for EVALUATION dataset (same function as "mergeTrainingDataset")
+        A "-1" means the method failed
+    Arguments:
+        :param file_source="./Data/Evaluation.xlsx": source file
+        :param file_out="Data/results.xlsx": output file
+    """
 
-    # Split rows having -1 as values
+    df = pd.read_excel(file_source, "Evaluation")
+
+    # Filter rows having at least one "-1" as values
+    # "-1" meens the method failed
     valid_pixels = (df == -1).any(axis=1)
     df_invalid = df[valid_pixels]
     df_valid = df[~valid_pixels]
@@ -175,9 +170,23 @@ def mergeEvalDataset():
     print("nb pixels invalid: ", df_invalid.shape[0])
     print("nb pixels valid: ", df_valid.shape[0])
 
-    export_df_to_excel(df_valid, "Evaluation", filename="Data/results.xlsx")
-    export_df_to_excel(df_invalid, "Invalids_evaluation",
-                       filename="Data/results.xlsx")
+    export_df_to_excel(df_valid, "Evaluation", filename=file_out)
+    export_df_to_excel(df_invalid, "Invalids_evaluation", filename=file_out)
+
+
+#############################################
+#                   Others                  #
+#############################################
+
+def add_row(df, row):
+    """ Add a row at the end of the dataframe
+    Arguments
+        :param df: dataframe
+        :param row: row to add
+    """
+    df.loc[-1] = row
+    df.index = df.index + 1
+    return df.sort_index()
 
 
 def deletefile(filename):
@@ -188,3 +197,27 @@ def deletefile(filename):
     import os
     if os.path.exists(filename):    # If file existing
         os.remove(filename)         # Delete file
+
+
+#################################################
+#                Progress bar                   #
+#################################################
+# Create a progress ba r in terminal
+def startProgress(title):
+    global progress_x
+    sys.stdout.write(title + ": [" + "-" * 50 + "]" + chr(8) * 51)
+    sys.stdout.flush()
+    progress_x = 0
+
+
+def progress(x):
+    global progress_x
+    x = int(x * 50 // 100)
+    sys.stdout.write("#" * (x - progress_x))
+    sys.stdout.flush()
+    progress_x = x
+
+
+def endProgress():
+    sys.stdout.write("#" * (50 - progress_x) + "]\n")
+    sys.stdout.flush()

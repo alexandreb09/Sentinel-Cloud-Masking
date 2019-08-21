@@ -20,6 +20,7 @@ from subprocess import check_output     # Run windows command from python
 import json                             # Export metadata as JSON file
 import logging                          # Write
 import datetime                         # Handle dates
+import os                               # Handle files logging
 
 import parameters
 
@@ -149,22 +150,23 @@ def updateJSONMetaData(filename, new_data):
 
 
 def list_reshape(one_D_list, n):
-    """ Reshape a 1D list to a 2D list n elements per sublist
+    """ Reshape a 1D list to a 2D list with n elements per sublist
     Arguments:
         :param one_D_list: list to process
         :param n: number elements per sublists
+        :return: 2 * n list
     """
     return [one_D_list[i:i+n] for i in range(0, len(one_D_list), n)]
 
 
-def init_logger():
+def init_logger(path=parameters.LOG_FILE):
     """ Init the logger
     """
     level = logging.INFO
     format = '  %(message)s'
-    handlers = [logging.FileHandler(parameters.LOG_FILE),
+    handlers = [logging.FileHandler(path),
                 logging.StreamHandler()]
-
+    
     logging.basicConfig(level=level, format=format, handlers=handlers)
 
 
