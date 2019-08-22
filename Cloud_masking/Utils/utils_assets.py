@@ -38,6 +38,7 @@ def getAllImagesInColl(path):
         raise ValueError(list_images[0] + " Check the correct path.")
     return list_images
 
+
 def delete_assets(list_assets, silent=False):
     """ Delete all the image passed
     Arguments:
@@ -62,7 +63,6 @@ def delete_assets(list_assets, silent=False):
             counter += 1
     if not silent:
         print("{:-<100}\n|{:^98}|\n{:-<100}".format("", "Deletion Finished !", ""))
-
 
 
 def move_list_file(source, dest, verbose=False):
@@ -154,7 +154,7 @@ def export_image_to_drive(image, roi=None, name=None, folder="default_drive_fold
 def exportImageListToDrive(image_to_run, output_json="Metadata_mask.json", drive_folder_name="default_drive_folder_name"):
     """ Export a list of image to google drive
     Arguments:
-        :param image_to_run: List a image image id to export
+        :param image_to_run: List a image id to export
                             Use 'getAllImagesInColl' to get all image id from a directory
         :type image_to_run: List[string, ...] (python)
         :param output_json="Metadata_mask.json": path to output json file (storing metadata)

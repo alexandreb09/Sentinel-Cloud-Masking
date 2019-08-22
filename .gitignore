@@ -1,6 +1,7 @@
 Build_model/Data
 Cloud_masking/Data
 logs/
+Upload_Data/
 
 /Interpolation/Images.zip
 /Interpolation/sample_data.xlsx

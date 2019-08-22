@@ -45,13 +45,13 @@ def add_fit(sentinel_coll, n_harmonics, dependent):
         return image.addBands(timeRadians.rename('t').float())
     
  
-    def getNames(base, list_):
+    def get_names(base, list_):
         """ Function to get a sequence of band names for harmonic terms.
         Arguments:
             :param base: python string
             :param list: list of number
         """   
-        return ee.List(list_).map(lambda i: ee.String(base).cat(str(i)))
+        return ee.List(["{}{}".format(base, i) for i in list_])
 
 
     def addHarmonics(freqs):
@@ -117,16 +117,16 @@ def add_fit(sentinel_coll, n_harmonics, dependent):
     
     # Make a list of harmonic frequencies to model.  
     # These also serve as band name suffixes.
-    harmonicFrequencies = ee.List.sequence(1, n_harmonics)
+    harmonicFrequencies = [i for i in range(1, n_harmonics + 1)]
     
     # Construct lists of names for the harmonic terms.
-    cosNames = getNames('cos_', harmonicFrequencies)
-    sinNames = getNames('sin_', harmonicFrequencies)
+    cosNames = get_names('cos_', harmonicFrequencies)
+    sinNames = get_names('sin_', harmonicFrequencies)
 
     # Independent variables.
     independents = ee.List(['constant', 't']).cat(cosNames) \
                                              .cat(sinNames)
-
+                                             
     # Add variables
     sentinel_harmo = sentinel_coll.map(addNDVI) \
                                 .map(addTime)   \
