@@ -1,5 +1,6 @@
 Build_model/Data
 Cloud_masking/Data
+logs/
 
 /Interpolation/Images.zip
 /Interpolation/sample_data.xlsx
@@ -7,6 +8,6 @@ Cloud_masking/Data
 
 /client_secrets.json
 /token.pickle
-/logs.log
+
 
 /!**/__pycache__
