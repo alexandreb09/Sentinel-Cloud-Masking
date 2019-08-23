@@ -114,6 +114,14 @@ def add_fit(sentinel_coll, n_harmonics, dependent):
             image = ee.Image(image)
             return image.select(image.bandNames().removeAll(independents))
         return wrapped
+
+    
+    def mask_values_1(image):
+        output = image.select('fitted_' + str(n_harmonics))
+        mask_ndvi = output.gt(-1).And(output.lt(1))
+        return image.addBands(srcImg=output.updateMask(mask_ndvi),
+                              overwrite=True)
+        
     
     # Make a list of harmonic frequencies to model.  
     # These also serve as band name suffixes.
@@ -133,7 +141,6 @@ def add_fit(sentinel_coll, n_harmonics, dependent):
                                 .map(addConstant)   \
                                 .map(addHarmonics(harmonicFrequencies))
   
-
     # The output of the regression reduction is a 4x1 array image.
     harmonicTrendCoefficients = sentinel_harmo  \
                     .select(independents.add(dependent))    \
@@ -145,8 +152,11 @@ def add_fit(sentinel_coll, n_harmonics, dependent):
     # Compute fitted values.
     fittedHarmonic = sentinel_harmo.map(add_fitted(harmonicTrendCoefficients, independents))
   
-
-
+    # If number of harmonic != 1
+    if n_harmonics > 1:
+        # Mask values greater 1 and below -1
+        fittedHarmonic = fittedHarmonic.map(mask_values_1)
+    
     fittedHarmonic = fittedHarmonic.map(add_recovered(dependent))   \
                                     .map(select_used_bands(independents))
   

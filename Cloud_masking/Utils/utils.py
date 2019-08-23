@@ -22,6 +22,14 @@ import logging                          # Write
 import datetime                         # Handle dates
 import os                               # Handle files logging
 
+
+import ee
+import os
+import sys
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(BASE_DIR)
+sys.path.append(os.path.join(BASE_DIR, '..'))
+
 import parameters
 
 #############################################

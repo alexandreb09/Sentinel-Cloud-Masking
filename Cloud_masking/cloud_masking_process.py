@@ -41,14 +41,14 @@ sys.path.append(os.path.join(BASE_DIR, 'Background_methods'))
 sys.path.append(os.path.join(BASE_DIR, 'Utils'))
 
 from Utils.utils import getGeometryImage, get_name_collection, export_image_to_GEE, init_logger, date_gap
-from Utils.utils_tasks import getNumberActiveTask
+from Utils.utils_tasks import getNumberActiveTask, getTaskList, cancelAllTask
 from Utils.utils_assets import getAllImagesInColl
 from cloud_masking_model import computeCloudMasking
 import parameters
 
 
 def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
-                             folder_GEE=None, excel_file=None,
+                             geo_land=None, folder_GEE=None, excel_file=None,
                              image_to_exclude=[], nb_task_max=None,
                              silent=False):
     """ Method to run the whole cloud masking process
@@ -56,6 +56,7 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
         :param date_start=None: Starting date time (if None not set, read from parameter)
         :param date_end=None: End date time (if None not set, read from parameter)
         :param geometry=None: Geometry that roughly overlay the UK
+        :param geo_land=None: path a GEE featureCollection (border area for example)
         :param folder_GEE=None: GEE folder (python string)
         :param excel_file=None: excel file (file create by previous ecution)
         :param image_to_exclude=[]: list images to exclude
@@ -66,7 +67,7 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
     """
 
     if not silent:
-        logging.info("{:-<98}\n|{:^98}|\n{:-<100}".format("", "Processus started :-)", ""))
+        logging.info("{:-<98}\n|{:^98}|\n{:-<100}".format("", "Process started :-)", ""))
    
     # Load variable from parameters
     if not date_start:  date_start  = parameters.date_start
@@ -75,8 +76,8 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
     if not folder_GEE:  folder_GEE  = parameters.folder_GEE
     if not excel_file:  excel_file  = parameters.excel_file
     if not nb_task_max: nb_task_max = parameters.nb_task_max
+    if not geo_land:    geo_land    = ee.FeatureCollection(parameters.land_geometry)
     
-
     # Adjust date_start and date_end
     date_start, date_end = date_gap(date_start, date_end)
 
@@ -111,6 +112,15 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
         output = pd.read_excel(excel_file)
         image_ignored = output.Name.values
         output = output.set_index("Name")
+
+        to_remove = output.Result.isin(["RUNNING", "READY"])
+
+        # Cancel task running and ready
+        cancelAllTask(task_list=output.Task_id[to_remove].values[:10])
+
+        output = output[~to_remove]
+        output.to_excel(excel_file)
+
     else:
         ans = input('The excel file "{}" doesn\'t exist. Continue and ignore? (Y/N) :'.format(excel_file))
         if ans != "Y": sys.exit()
@@ -134,8 +144,6 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
         logging.info('\t- There are {} images to process'.format(len(image_names)))
 
 
-    # Land geometry
-    geo_land = ee.FeatureCollection(parameters.land_geometry)
 
     # Init variables
     read = True                     # Read output file (dynamically updated when the openning fails)
@@ -234,6 +242,9 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
         if len(task_bag) == 0 and len(image_names) == 0:
             process = False    
         else: time.sleep(30)
+    
+    logging.info("{:-<98}\n|{:^98}|\n{:-<100}".format("",
+                                                      "Process finished :-)", ""))
 
 
 
@@ -252,6 +263,4 @@ if __name__ == "__main__":
         image_done = list(data.keys())
         
     # Luanch process
-    # process_and_store_to_GEE(folder_GEE='users/ab43536/masks_4_methods',
-    #                          excel_file="Cloud_masking/current_status.xlsx",
-    #                          image_to_exclude=image_done)
+    process_and_store_to_GEE(image_to_exclude=image_done)

@@ -58,4 +58,24 @@ This repository only contains scripts for Cloud masking. All the interpolations 
 
 
 ## Interpolation
-Google Earth Engine Editor: example with NDVI . Run the `users/ab43536/Interpolation/SENTINEL_NDVI` file. It's plotting the the NDVI and the interpolation. The results aren't saved. I'm working on...
+
+This Python folder only contains the script for interpolating missing data using the harmonic model. 
+
+**Workflow**:
+- The script is loading the cloud masks available on GEE storage
+- The Sentinel Images matching the cloud mask image (same id) are loaded and filtered according the region and the date range.
+- The interpolation process is performed according:
+	- The missing data (labelled cloudy) are replace by values interpolated with 10 harmonics. The missing points remaining (values greater below -1 or greater 1) are interpolated with 5 harmonics. The missing values remaining are interpolated with 1 harmonic. 
+- A *quality* band is added: this bands is an integer band where the value per pixel is the number of harmonics used in the interpolation. For the actual NDVI bands, the value is equal to -1.
+- The script images are exported one by one:
+
+NOTE:
+- This script doesn't handle the number of active   
+ task. This is a problem if more than 3000 images are processed.
+- This script is exporting images to GEE storage This destination might become a problem because of restricted number of assets allowed by GEE. Also, the number of images will increase in GEE storage however, the bigger the number of images used for the interpolation, the better it is.
+	- One solution might be to change to export to the DRIVE using "ee.batch.Export.image.toDrive" 
+	- The function 'export_image_to_drive' in Cloud_masking/Utils/utils_assets performs this task..     
+
+
+**Google Earth Engine Editor**: example with NDVI . Run the `users/ab43536/Interpolation/SENTINEL_NDVI` file. It's plotting the NDVI and the interpolation. 
+The results aren't saved in GEE web interface.

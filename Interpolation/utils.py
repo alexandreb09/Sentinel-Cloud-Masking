@@ -8,6 +8,8 @@ from itertools import groupby
 import pandas as pd
 import json
 import ee
+import logging
+import os
 
 
 def clean_and_save_data():
@@ -96,7 +98,7 @@ def export_image_to_GEE(image, asset_id="users/ab43536/", roi=None,
         task with be: "Image `num` on `total` equal `num/total` pourcent"
     """
     if roi == None:
-        roi = getGeometryImage(image)
+        roi = image.geometry().coordinates()
     if name == None:
         name = image.id().getInfo()
     description = "Default export"
@@ -105,12 +107,13 @@ def export_image_to_GEE(image, asset_id="users/ab43536/", roi=None,
             num, total, num / total * 100)
     # print(description)
     assetId = asset_id + '/' + name
+
     # Create a task : export the result as image asset
-    task = ee.batch.Export.image.toAsset(image=image.clip(roi),
+    task = ee.batch.Export.image.toAsset(image=image,
                                          description=description,
                                          assetId=assetId,
                                          scale=30,
-                                         region=roi.coordinates().getInfo(),
+                                         region=roi.getInfo(),
                                          )
     # Run the task
     task.start()
@@ -133,3 +136,20 @@ def getMetaDataImage(image):
     })
     # Return python object
     return sub_dict.getInfo()
+
+
+def init_logger(path):
+    """ Init the logger
+    """
+    # Check directory exists 
+    # If not: create directory
+    directory = "/".join(path.split('/')[:-1])
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    level = logging.INFO
+    format = '  %(message)s'
+    handlers = [logging.FileHandler(path),
+                logging.StreamHandler()]
+
+    logging.basicConfig(level=level, format=format, handlers=handlers)

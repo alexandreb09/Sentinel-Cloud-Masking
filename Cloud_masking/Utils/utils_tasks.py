@@ -23,7 +23,7 @@ def getNumberActiveTask(verbose=False):
     return n
 
 
-def getTaskList(verbose=False):
+def getTaskList(verbose=False, all=False):
     """ Return all the current task RUNNING or READY (waiting)
     Arguments
         :param verbose=False: 
@@ -39,8 +39,12 @@ def getTaskList(verbose=False):
 
     for task in tasks_list:
         values = re.split(r'\s{2,}', task)[:-1]
-        if len(values) == 4 and (values[3] == "READY" or values[3] == "RUNNING"):
-            tasks.append({k: v for k, v in zip(keys, values) if k != ""})
+        if len(values) == 4:
+            if not all:
+                if values[3] == "READY" or values[3] == "RUNNING":
+                    tasks.append({k: v for k, v in zip(keys, values) if k != ""})
+            else:
+                tasks.append({k: v for k, v in zip(keys, values) if k != ""})
 
     # tasks.pop('', None)
     if verbose:
@@ -50,14 +54,16 @@ def getTaskList(verbose=False):
     return tasks
 
 
-def cancelAllTask(verbose=False):
+def cancelAllTask(verbose=False, task_list=None):
     """ Cancel all the active task (READY and RUNNING)
         The commann seems to fail if more than 32 arguments (task_id) are given at the same time
     """
     # Max argument number given to one command
     nb_max = 32
     
-    task_list = getTaskList(verbose=False)
+    if task_list is None:
+        task_list = getTaskList(verbose=False)
+        task_list = [task["id_task"] for task in task_list]
     total = len(task_list)
     counter = 0
 
@@ -69,8 +75,8 @@ def cancelAllTask(verbose=False):
                                                     "Task cancellation started", ""))
 
     for task_subset in task_list:
-        list_id = [task["id_task"] for task in task_subset]
-        command = "earthengine task cancel {}".format(list_id)
+        # list_id = [task["id_task"] for task in task_subset]
+        command = "earthengine task cancel {}".format(task_subset)
         command = command.replace(",", "").replace("[", "").replace("]", "").replace("'", "")
         check_output(command, shell=True)
 
@@ -84,6 +90,7 @@ def cancelAllTask(verbose=False):
                                                     "Task cancellation finished !", ""))
 
 
+
+
 if __name__ == "__main__":
-    # Show active task
-    getNumberActiveTask(verbose=True)
+    pass

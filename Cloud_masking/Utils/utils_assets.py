@@ -34,7 +34,8 @@ def getAllImagesInColl(path):
                                 .decode("utf-8") \
                                 .replace("\r", "") \
                                 .split("\n")[:-1]
-    if not list_images or "No such folder or collection:" in list_images[0]:
+
+    if len(list_images) > 0 and "No such folder or collection:" in list_images[0]:
         raise ValueError(list_images[0] + " Check the correct path.")
     return list_images
 
