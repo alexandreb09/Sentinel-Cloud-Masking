@@ -170,6 +170,14 @@ def list_reshape(one_D_list, n):
 def init_logger(path=parameters.LOG_FILE):
     """ Init the logger
     """
+    path = os.path.normpath(path)
+    print(os.path.dirname(path))
+    if not os.path.isfile(path):
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+        with open(path, 'a'): pass
+
+
     level = logging.INFO
     format = '  %(message)s'
     handlers = [logging.FileHandler(path),

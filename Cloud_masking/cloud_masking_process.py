@@ -124,6 +124,8 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
     else:
         ans = input('The excel file "{}" doesn\'t exist. Continue and ignore? (Y/N) :'.format(excel_file))
         if ans != "Y": sys.exit()
+        else:
+            output.to_excel(excel_file)
     
     # Select image ID
     image_done_GEE = [img.split('/')[-1] for img in getAllImagesInColl(folder_GEE)]

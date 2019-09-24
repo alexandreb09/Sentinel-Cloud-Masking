@@ -158,4 +158,4 @@ SENTINEL2_BANDNAMES: list = ['B1', 'B2', 'B3', 'B4', 'B5',
                              'B10', 'B11', 'B12', 'QA60']
 
 # Log File name
-LOG_FILE: str = "./logs/logs.log"
+LOG_FILE: str = "logs/logs.log"
