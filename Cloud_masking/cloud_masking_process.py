@@ -33,6 +33,7 @@ import time             # Sleep between task running
 import logging          # Write logs
 import json             # Read previously define json
 import pandas as pd
+import numpy as np
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
@@ -122,7 +123,7 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
         output.to_excel(excel_file)
 
     else:
-        ans = input('The excel file "{}" doesn\'t exist. Continue and ignore? (Y/N) :'.format(excel_file))
+        ans = input('The excel file "{}" doesn\'t exist. Continue and ignore? (Y/N) : '.format(excel_file))
         if ans.lower() != "y": sys.exit()
         else:
             output.to_excel(excel_file)
@@ -140,8 +141,8 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
     if not silent:
         logging.info('\t- There are {} images in Sentinel Collection matching date and area constraints'.format(total))
         logging.info('\t- There are {} images already processed (already existing in GEE folder)'.format(len(image_done_GEE)))
-        logging.info('\t- There are {} images out of the area of interest (ignored)'.format(sum(output.Result.eq("Out of area"))))
-        logging.info('\t- There are {} images that have failed'.format(sum(output.Result.eq("FAILED"))))
+        logging.info('\t- There are {} images out of the area of interest (ignored)'.format(np.sum(output.Result.eq("Out of area"))))
+        logging.info('\t- There are {} images that have failed'.format(np.sum(output.Result.eq("FAILED"))))
         logging.info('\t- There are {} images to ignored (given in parameters) '.format(len(image_to_exclude)))
         logging.info('\t- There are {} images to process'.format(len(image_names)))
 
