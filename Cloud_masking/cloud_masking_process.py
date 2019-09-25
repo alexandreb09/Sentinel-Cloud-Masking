@@ -123,7 +123,7 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
 
     else:
         ans = input('The excel file "{}" doesn\'t exist. Continue and ignore? (Y/N) :'.format(excel_file))
-        if lower(ans) != "y": sys.exit()
+        if ans.lower() != "y": sys.exit()
         else:
             output.to_excel(excel_file)
     
@@ -226,7 +226,7 @@ def process_and_store_to_GEE(date_start=None, date_end=None, geometry=None,
                 to_remove.add(task)
             
             # Update output content (excel file)
-            output.loc[output.Task_id == task_info.get("id"), "Result"] = status
+            output.loc[output.Task_id.eq(task_info.get("id")), "Result"] = status
         
         # Remove finished tasks
         for task_to_rm in to_remove:

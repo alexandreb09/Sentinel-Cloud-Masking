@@ -147,7 +147,7 @@ excel_file = "Cloud_masking/current_status.xlsx"
 #   - This argument is design to do not process already processed images
 #     (after exportation)
 #   - Must be set to None if ignored
-JSON_FILE = ".\Cloud_masking\Data\Metadata_mask.json"
+JSON_FILE = None #".\Cloud_masking\Data\Metadata_mask.json"
 
 #########################################
 #               Others                  #
