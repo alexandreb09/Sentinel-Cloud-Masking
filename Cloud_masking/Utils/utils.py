@@ -171,7 +171,6 @@ def init_logger(path=parameters.LOG_FILE):
     """ Init the logger
     """
     path = os.path.normpath(path)
-    print(os.path.dirname(path))
     if not os.path.isfile(path):
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))

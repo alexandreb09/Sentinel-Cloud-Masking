@@ -93,4 +93,5 @@ def cancelAllTask(verbose=False, task_list=None):
 
 
 if __name__ == "__main__":
+    # cancelAllTask()
     pass
